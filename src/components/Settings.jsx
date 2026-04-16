@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import './Settings.css'
 import Icon from './Icon'
+import { fetchChatwootAgents } from '../lib/chatwootApi'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#14b8a6', '#64748b']
 
@@ -167,48 +168,13 @@ function AgentManager({ agents, onAdd, onRemove }) {
   const [showPicker, setShowPicker] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [importError, setImportError] = useState('')
-  const [apiToken, setApiToken] = useState(() => localStorage.getItem('chatwoot_api_token') || '')
-  const [showTokenInput, setShowTokenInput] = useState(false)
-
-  const CHATWOOT_HOST = 'https://chat.izzy.app.br'
-
-  function getAccountId() {
-    try {
-      const ctx = JSON.parse(sessionStorage.getItem('chatwoot.context') || '{}')
-      return ctx.accountId
-    } catch { return null }
-  }
+  const [importMsg, setImportMsg] = useState(null) // { text, type: 'success'|'error' }
 
   async function importFromChatwoot() {
-    const accountId = getAccountId()
-    if (!accountId) {
-      setImportError('Account ID não encontrado. Abra o app dentro do Chatwoot primeiro.')
-      return
-    }
-    if (!apiToken.trim()) {
-      setShowTokenInput(true)
-      return
-    }
-
     setImporting(true)
-    setImportError('')
-
+    setImportMsg(null)
     try {
-      const res = await fetch(`${CHATWOOT_HOST}/api/v1/accounts/${accountId}/agents`, {
-        headers: {
-          'api_access_token': apiToken.trim(),
-          'Content-Type': 'application/json',
-        }
-      })
-
-      if (!res.ok) {
-        setImportError(`Erro ${res.status}: verifique o token de acesso.`)
-        setImporting(false)
-        return
-      }
-
-      const data = await res.json()
+      const data = await fetchChatwootAgents()
       const existingNames = new Set(agents.map(a => a.name.toLowerCase()))
       let added = 0
 
@@ -224,19 +190,15 @@ function AgentManager({ agents, onAdd, onRemove }) {
         }
       }
 
-      if (added === 0) setImportError('Todos os agentes já estão cadastrados.')
-      else setImportError(`${added} agente(s) importado(s) com sucesso!`)
+      setImportMsg(
+        added === 0
+          ? { text: 'Todos os agentes já estão cadastrados.', type: 'error' }
+          : { text: `${added} agente(s) importado(s) com sucesso!`, type: 'success' }
+      )
     } catch (e) {
-      setImportError('Erro de conexão. Verifique o token e tente novamente.')
+      setImportMsg({ text: e.message, type: 'error' })
     }
-
     setImporting(false)
-  }
-
-  function saveToken() {
-    localStorage.setItem('chatwoot_api_token', apiToken)
-    setShowTokenInput(false)
-    importFromChatwoot()
   }
 
   function submit(e) {
@@ -254,46 +216,17 @@ function AgentManager({ agents, onAdd, onRemove }) {
 
   return (
     <SectionCard title="Responsáveis">
-      {/* Botão importar */}
       <div className="agent-import-bar">
-        <button
-          type="button"
-          className="btn-import"
-          onClick={importFromChatwoot}
-          disabled={importing}
-        >
+        <button type="button" className="btn-import" onClick={importFromChatwoot} disabled={importing}>
           {importing
             ? <><div className="btn-spinner" /> Importando...</>
-            : <><Icon name="transfer" size={13} /> Importar do Chatwoot</>
+            : <><Icon name="transfer" size={13} /> Sincronizar com Chatwoot</>
           }
         </button>
-        {importError && (
-          <span className={`import-msg ${importError.includes('sucesso') ? 'success' : 'error'}`}>
-            {importError}
-          </span>
+        {importMsg && (
+          <span className={`import-msg ${importMsg.type}`}>{importMsg.text}</span>
         )}
       </div>
-
-      {/* Token input */}
-      {showTokenInput && (
-        <div className="token-form">
-          <p className="token-hint">
-            Acesse o Chatwoot → Configurações de Perfil → Copie o <strong>Access Token</strong>
-          </p>
-          <div className="inline-form-row">
-            <input
-              className="inline-input"
-              placeholder="Cole seu API Access Token aqui"
-              value={apiToken}
-              onChange={e => setApiToken(e.target.value)}
-              type="password"
-            />
-            <button type="button" className="btn-add-inline" onClick={saveToken}>
-              <Icon name="check" size={13} />
-            </button>
-          </div>
-        </div>
-      )}
 
       <ItemList items={agents} renderItem={a => (
         <div key={a.id} className="settings-item agent-item">

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 
 const CHATWOOT_HOST = 'https://chat.izzy.app.br'
 const SESSION_KEY = 'chatwoot.context'
-// Tempo máximo esperando postMessage antes de usar sessionStorage
+const AUTH_KEY = 'chatwoot.auth'
 const FALLBACK_TIMEOUT_MS = 1500
 
 function buildConversationLink(accountId, conversationId) {
@@ -79,6 +79,23 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
         clientPhone: ctx.clientPhone,
       }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toStore))
+
+      // Tenta extrair auth headers do cookie cw_d_session_info
+      try {
+        const cookieVal = document.cookie.split('; ').find(r => r.startsWith('cw_d_session_info='))
+        if (cookieVal) {
+          const info = JSON.parse(decodeURIComponent(cookieVal.split('=').slice(1).join('=')))
+          if (info['access-token']) {
+            sessionStorage.setItem(AUTH_KEY, JSON.stringify({
+              'access-token': info['access-token'],
+              'client': info['client'],
+              'uid': info['uid'],
+              'token-type': info['token-type'] || 'Bearer',
+            }))
+          }
+        }
+      } catch {}
+
       addLog?.(`[SAVED] ${JSON.stringify(toStore)}`)
 
       receivedPostMessage.current = true
