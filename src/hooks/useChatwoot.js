@@ -9,7 +9,6 @@ function buildConversationLink(accountId, conversationId) {
 }
 
 function parseContext(payload) {
-  // Extrai accountId pela mesma ordem de prioridade do projeto original
   const accountId =
     payload?.currentAccount?.id ||
     payload?.conversation?.account_id ||
@@ -35,40 +34,57 @@ function parseContext(payload) {
   return { accountId, conversationId, agentId, agentName, agentEmail, clientName }
 }
 
-export function useChatwoot() {
+export function useChatwoot(addLog) {
   const [data, setData] = useState(() => {
-    // Tenta recuperar do sessionStorage ao inicializar
     try {
       const stored = sessionStorage.getItem(SESSION_KEY)
       if (stored) {
         const ctx = JSON.parse(stored)
+        addLog?.(`[INIT] Dados recuperados do sessionStorage: ${stored}`)
         return {
           ...ctx,
           chatwootLink: buildConversationLink(ctx.accountId, ctx.conversationId),
           conversationLabel: ctx.conversationId ? `#${ctx.conversationId}` : null,
         }
+      } else {
+        addLog?.('[INIT] Nenhum dado no sessionStorage')
       }
-    } catch {}
+    } catch (e) {
+      addLog?.(`[INIT] Erro ao ler sessionStorage: ${e.message}`)
+    }
     return null
   })
 
   useEffect(() => {
     function handleMessage(event) {
       const msg = event.data
-      if (!msg || msg.type !== 'appContext') return
+      addLog?.(`[MSG] origin="${event.origin}" type="${msg?.type}" payload=${JSON.stringify(msg).slice(0, 300)}`)
 
-      const ctx = parseContext(msg.payload || msg.data || msg)
+      if (!msg || msg.type !== 'appContext') {
+        addLog?.(`[MSG] Ignorado — type esperado: "appContext", recebido: "${msg?.type}"`)
+        return
+      }
 
-      if (!ctx.accountId && !ctx.conversationId) return
+      const payload = msg.payload || msg.data || msg
+      addLog?.(`[PARSE] payload=${JSON.stringify(payload).slice(0, 300)}`)
 
-      // Persiste no sessionStorage igual ao projeto original
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      const ctx = parseContext(payload)
+      addLog?.(`[CTX] accountId=${ctx.accountId} conversationId=${ctx.conversationId} clientName=${ctx.clientName} agentName=${ctx.agentName}`)
+
+      if (!ctx.accountId && !ctx.conversationId) {
+        addLog?.('[CTX] Nenhum accountId ou conversationId encontrado, ignorando')
+        return
+      }
+
+      const toStore = {
         accountId: ctx.accountId,
         conversationId: ctx.conversationId,
         agentId: ctx.agentId,
         agentName: ctx.agentName,
         agentEmail: ctx.agentEmail,
-      }))
+      }
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(toStore))
+      addLog?.(`[SESSION] Salvo: ${JSON.stringify(toStore)}`)
 
       setData({
         ...ctx,
@@ -78,8 +94,7 @@ export function useChatwoot() {
     }
 
     window.addEventListener('message', handleMessage)
-
-    // Sinaliza ao Chatwoot que o app está pronto
+    addLog?.('[READY] Listener registrado, enviando chatwoot:ready para parent')
     window.parent.postMessage({ type: 'chatwoot:ready' }, '*')
 
     return () => window.removeEventListener('message', handleMessage)

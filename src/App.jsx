@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useStore } from './store/useStore'
 import { STATUSES } from './data/defaults'
 import TicketForm from './components/TicketForm'
@@ -6,12 +6,21 @@ import TicketList from './components/TicketList'
 import TicketDetail from './components/TicketDetail'
 import Settings from './components/Settings'
 import Icon from './components/Icon'
+import DebugPanel from './components/DebugPanel'
 import { useChatwoot } from './hooks/useChatwoot'
 import './App.css'
 
 export default function App() {
   const store = useStore()
-  const chatwoot = useChatwoot()
+  const [logs, setLogs] = useState([])
+
+  const addLog = useCallback((msg) => {
+    const time = new Date().toLocaleTimeString('pt-BR')
+    setLogs(prev => [...prev, { time, msg }])
+    console.log(`[Chatwoot Debug] ${msg}`)
+  }, [])
+
+  const chatwoot = useChatwoot(addLog)
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -180,6 +189,7 @@ export default function App() {
           )}
         </main>
       </div>
+      <DebugPanel logs={logs} />
     </div>
   )
 }
