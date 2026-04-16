@@ -26,6 +26,7 @@ export default function NovoTicket({ store }) {
     <TicketForm
       categories={store.categories}
       types={store.types}
+      agents={store.agents}
       chatwootInitial={chatwoot}
       onSubmit={handleCreate}
       onCancel={() => navigate('/')}

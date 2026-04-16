@@ -35,3 +35,7 @@ export const STATUSES = [
   { id: 'waiting', label: 'Aguardando', color: '#a78bfa' },
   { id: 'closed', label: 'Fechado', color: '#4ade80' },
 ]
+
+export const DEFAULT_STATUSES = STATUSES
+
+export const DEFAULT_AGENTS = []

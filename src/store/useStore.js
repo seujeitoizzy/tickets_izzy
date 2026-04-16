@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { DEFAULT_CATEGORIES, DEFAULT_TYPES, STATUSES } from '../data/defaults'
+import { DEFAULT_CATEGORIES, DEFAULT_TYPES, DEFAULT_STATUSES, DEFAULT_AGENTS } from '../data/defaults'
 
 // Converte snake_case do banco para camelCase do app
 function mapTicket(row) {
@@ -18,6 +18,8 @@ function mapTicket(row) {
     chatwootLink: row.chatwoot_link,
     chatwootConversationId: row.chatwoot_conversation_id,
     chatwootAccountId: row.chatwoot_account_id,
+    deadline: row.deadline,
+    deadlineIndeterminate: row.deadline_indeterminate,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     timeline: (row.ast_ticket_timeline || []).map(mapTimeline),
@@ -44,35 +46,37 @@ function mapType(row) {
   return { id: row.id, label: row.label, icon: row.icon }
 }
 
+function mapStatus(row) {
+  return { id: row.id, label: row.label, color: row.color, orderNum: row.order_num }
+}
+
+function mapAgent(row) {
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone, avatarColor: row.avatar_color, active: row.active }
+}
+
 export function useStore() {
   const [tickets, setTickets] = useState([])
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [types, setTypes] = useState(DEFAULT_TYPES)
+  const [statuses, setStatuses] = useState(DEFAULT_STATUSES)
+  const [agents, setAgents] = useState(DEFAULT_AGENTS)
   const [loading, setLoading] = useState(true)
 
-  // Carrega tudo ao montar
   useEffect(() => {
     async function fetchAll() {
       setLoading(true)
-      await Promise.all([fetchTickets(), fetchCategories(), fetchTypes()])
+      await Promise.all([fetchTickets(), fetchCategories(), fetchTypes(), fetchStatuses(), fetchAgents()])
       setLoading(false)
     }
     fetchAll()
 
-    // Realtime: re-busca tickets quando houver qualquer mudança nas tabelas
     const ticketSub = supabase
       .channel('ast_tickets_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_tickets' }, () => {
-        fetchTickets()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_ticket_timeline' }, () => {
-        fetchTickets()
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_tickets' }, () => fetchTickets())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_ticket_timeline' }, () => fetchTickets())
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(ticketSub)
-    }
+    return () => { supabase.removeChannel(ticketSub) }
   }, [])
 
   async function fetchTickets() {
@@ -105,6 +109,27 @@ export function useStore() {
     if (data?.length) setTypes(data.map(mapType))
   }
 
+  async function fetchStatuses() {
+    const { data, error } = await supabase
+      .from('ast_statuses')
+      .select('*')
+      .order('order_num')
+
+    if (error) { console.error('[fetchStatuses]', error); return }
+    if (data?.length) setStatuses(data.map(mapStatus))
+  }
+
+  async function fetchAgents() {
+    const { data, error } = await supabase
+      .from('ast_agents')
+      .select('*')
+      .eq('active', true)
+      .order('name')
+
+    if (error) { console.error('[fetchAgents]', error); return }
+    setAgents(data.map(mapAgent))
+  }
+
   // --- Tickets ---
   async function createTicket(data) {
     const { data: row, error } = await supabase
@@ -122,6 +147,8 @@ export function useStore() {
         chatwoot_link: data.chatwootLink || null,
         chatwoot_conversation_id: data.chatwootConversationId || null,
         chatwoot_account_id: data.chatwootAccountId || null,
+        deadline: data.deadline || null,
+        deadline_indeterminate: data.deadlineIndeterminate || false,
       })
       .select()
       .single()
@@ -155,6 +182,8 @@ export function useStore() {
     if (changes.clientName !== undefined)  update.client_name = changes.clientName
     if (changes.chatwootLink !== undefined) update.chatwoot_link = changes.chatwootLink
     if (changes.chatwootConversationId !== undefined) update.chatwoot_conversation_id = changes.chatwootConversationId
+    if (changes.deadline !== undefined) update.deadline = changes.deadline || null
+    if (changes.deadlineIndeterminate !== undefined) update.deadline_indeterminate = changes.deadlineIndeterminate
 
     const { error } = await supabase
       .from('ast_tickets')
@@ -165,7 +194,7 @@ export function useStore() {
 
     // Registra mudança de status na timeline
     if (changes.status && changes.status !== ticket.status) {
-      const statusObj = STATUSES.find(s => s.id === changes.status)
+      const statusObj = statuses.find(s => s.id === changes.status)
       await supabase.from('ast_ticket_timeline').insert({
         ticket_id: id,
         type: 'status_change',
@@ -241,9 +270,39 @@ export function useStore() {
     setTypes(prev => prev.filter(t => t.id !== id))
   }
 
+  async function addStatus(status) {
+    const { error } = await supabase
+      .from('ast_statuses')
+      .insert({ label: status.label, color: status.color, order_num: status.orderNum || 0 })
+    if (error) { console.error('[addStatus]', error); return }
+    await fetchStatuses()
+  }
+
+  async function removeStatus(id) {
+    const { error } = await supabase.from('ast_statuses').delete().eq('id', id)
+    if (error) { console.error('[removeStatus]', error); return }
+    setStatuses(prev => prev.filter(s => s.id !== id))
+  }
+
+  async function addAgent(agent) {
+    const { error } = await supabase
+      .from('ast_agents')
+      .insert({ name: agent.name, email: agent.email || null, phone: agent.phone || null, avatar_color: agent.avatarColor || '#6366f1' })
+    if (error) { console.error('[addAgent]', error); return }
+    await fetchAgents()
+  }
+
+  async function removeAgent(id) {
+    // Soft delete — marca como inativo
+    const { error } = await supabase.from('ast_agents').update({ active: false }).eq('id', id)
+    if (error) { console.error('[removeAgent]', error); return }
+    setAgents(prev => prev.filter(a => a.id !== id))
+  }
+
   return {
-    tickets, categories, types, loading,
+    tickets, categories, types, statuses, agents, loading,
     createTicket, updateTicket, deleteTicket, addAction,
     addCategory, removeCategory, addType, removeType,
+    addStatus, removeStatus, addAgent, removeAgent,
   }
 }

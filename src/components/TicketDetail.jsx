@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import './TicketDetail.css'
-import { PRIORITIES, STATUSES, ACTION_TYPES } from '../data/defaults'
+import { PRIORITIES, ACTION_TYPES } from '../data/defaults'
 import TicketForm from './TicketForm'
 import Icon from './Icon'
 
@@ -11,9 +11,29 @@ function fmt(iso) {
   })
 }
 
+function DeadlineBadge({ deadline }) {
+  const now = new Date()
+  const d = new Date(deadline)
+  const diffH = (d - now) / 3600000
+  const overdue = diffH < 0
+  const urgent = diffH >= 0 && diffH < 24
+
+  const color = overdue ? '#ef4444' : urgent ? '#f97316' : '#4ade80'
+  const label = overdue
+    ? `Vencido ${fmt(deadline)}`
+    : `${fmt(deadline)}`
+
+  return (
+    <span className="deadline-badge" style={{ color, borderColor: color + '44', background: color + '12' }}>
+      <Icon name="clock" size={12} />
+      {label}
+    </span>
+  )
+}
+
 function TimelineEntry({ entry }) {
   if (entry.type === 'status_change') {
-    const status = STATUSES.find(s => s.id === entry.status)
+    const status = statuses.find(s => s.id === entry.status)
     return (
       <div className="tl-entry tl-status">
         <div className="tl-dot tl-dot-status" style={{ borderColor: status?.color, background: status?.color + '22' }}>
@@ -45,7 +65,7 @@ function TimelineEntry({ entry }) {
   )
 }
 
-export default function TicketDetail({ ticket, categories, types, onBack, onUpdate, onDelete, onAction }) {
+export default function TicketDetail({ ticket, categories, types, statuses = [], onBack, onUpdate, onDelete, onAction }) {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [actionForm, setActionForm] = useState({ actionType: 'note', content: '', author: '' })
@@ -54,7 +74,7 @@ export default function TicketDetail({ ticket, categories, types, onBack, onUpda
   const cat = categories.find(c => c.id === ticket.categoryId)
   const type = types.find(t => t.id === ticket.typeId)
   const priority = PRIORITIES.find(p => p.id === ticket.priority)
-  const status = STATUSES.find(s => s.id === ticket.status)
+  const status = statuses.find(s => s.id === ticket.status)
 
   function submitAction(e) {
     e.preventDefault()
@@ -157,7 +177,7 @@ export default function TicketDetail({ ticket, categories, types, onBack, onUpda
               <div className="meta-item meta-full">
                 <span className="meta-label">Status</span>
                 <div className="status-btns">
-                  {STATUSES.map(s => (
+                  {statuses.map(s => (
                     <button
                       key={s.id}
                       className={`status-opt ${ticket.status === s.id ? 'active' : ''}`}
@@ -213,6 +233,17 @@ export default function TicketDetail({ ticket, categories, types, onBack, onUpda
                   <Icon name="clock" size={13} style={{ color: '#64748b' }} />
                   {fmt(ticket.createdAt)}
                 </span>
+              </div>
+
+              <div className="meta-item">
+                <span className="meta-label">Prazo</span>
+                {ticket.deadlineIndeterminate ? (
+                  <span className="meta-val" style={{ color: '#64748b' }}>Indeterminado</span>
+                ) : ticket.deadline ? (
+                  <DeadlineBadge deadline={ticket.deadline} />
+                ) : (
+                  <span className="meta-val" style={{ color: '#475569' }}>Não definido</span>
+                )}
               </div>
             </div>
 

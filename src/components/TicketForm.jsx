@@ -8,7 +8,7 @@ const AVAILABLE_ICONS = [
   'star', 'bug', 'arrowUp', 'pin', 'phone', 'transfer'
 ]
 
-export default function TicketForm({ onSubmit, onCancel, categories, types, initial = {}, chatwootInitial = null }) {
+export default function TicketForm({ onSubmit, onCancel, categories, types, agents = [], initial = {}, chatwootInitial = null }) {
   const [form, setForm] = useState({
     title: initial.title || '',
     description: initial.description || '',
@@ -19,16 +19,25 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, init
     clientName: initial.clientName || chatwootInitial?.clientName || '',
     chatwootLink: initial.chatwootLink || chatwootInitial?.chatwootLink || '',
     chatwootConversationId: initial.chatwootConversationId || chatwootInitial?.conversationLabel || '',
+    deadline: initial.deadline ? new Date(initial.deadline).toISOString().slice(0, 16) : '',
+    deadlineIndeterminate: initial.deadlineIndeterminate || false,
   })
 
   function handle(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  function handleCheck(e) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.checked }))
+  }
+
   function submit(e) {
     e.preventDefault()
     if (!form.title.trim()) return
-    onSubmit(form)
+    onSubmit({
+      ...form,
+      deadline: form.deadlineIndeterminate ? null : (form.deadline || null),
+    })
   }
 
   const selectedType = types.find(t => t.id === form.typeId)
@@ -95,7 +104,41 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, init
 
           <div className="field">
             <label>Responsável</label>
-            <input name="assignee" value={form.assignee} onChange={handle} placeholder="Nome do responsável" />
+            {agents.length > 0 ? (
+              <select name="assignee" value={form.assignee} onChange={handle}>
+                <option value="">— Selecionar responsável —</option>
+                {agents.map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input name="assignee" value={form.assignee} onChange={handle} placeholder="Nome do responsável" />
+            )}
+          </div>
+
+          <div className="section-label">Prazo de Resolução</div>
+          <div className="deadline-wrap">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="deadlineIndeterminate"
+                checked={form.deadlineIndeterminate}
+                onChange={handleCheck}
+              />
+              <span className="checkbox-box" />
+              <span>Prazo indeterminado</span>
+            </label>
+            {!form.deadlineIndeterminate && (
+              <div className="field" style={{ marginBottom: 0, marginTop: 12 }}>
+                <label>Data e hora limite</label>
+                <input
+                  type="datetime-local"
+                  name="deadline"
+                  value={form.deadline}
+                  onChange={handle}
+                />
+              </div>
+            )}
           </div>
 
           <div className="form-actions">

@@ -236,3 +236,52 @@
   border-left: 1px solid #334155;
   padding-left: 8px;
 }
+
+/* Nav Groups */
+.nav-group {
+  margin-bottom: 4px;
+}
+
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.nav-group-header:hover {
+  color: #94a3b8;
+  background: #1e293b;
+  opacity: 1;
+}
+
+.nav-chevron {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 8px;
+  margin-bottom: 4px;
+}
+
+.nav-item-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}

@@ -1,6 +1,6 @@
 import React from 'react'
 import './TicketList.css'
-import { PRIORITIES, STATUSES } from '../data/defaults'
+import { PRIORITIES } from '../data/defaults'
 import Icon from './Icon'
 
 function timeAgo(iso) {
@@ -13,7 +13,7 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d atrás`
 }
 
-export default function TicketList({ tickets, categories, types, onSelect }) {
+export default function TicketList({ tickets, categories, types, statuses = [], onSelect }) {
   if (tickets.length === 0) {
     return (
       <div className="empty">
@@ -29,7 +29,7 @@ export default function TicketList({ tickets, categories, types, onSelect }) {
         const cat = categories.find(c => c.id === ticket.categoryId)
         const type = types.find(t => t.id === ticket.typeId)
         const priority = PRIORITIES.find(p => p.id === ticket.priority)
-        const status = STATUSES.find(s => s.id === ticket.status)
+        const status = statuses.find(s => s.id === ticket.status)
         const actionCount = ticket.timeline?.filter(e => e.type === 'action').length || 0
 
         return (
@@ -83,6 +83,18 @@ export default function TicketList({ tickets, categories, types, onSelect }) {
                 <Icon name="clock" size={11} />
                 {timeAgo(ticket.createdAt)}
               </span>
+              {!ticket.deadlineIndeterminate && ticket.deadline && (() => {
+                const diffH = (new Date(ticket.deadline) - new Date()) / 3600000
+                const overdue = diffH < 0
+                const urgent = diffH >= 0 && diffH < 24
+                const color = overdue ? '#ef4444' : urgent ? '#f97316' : '#64748b'
+                return (
+                  <span className="tc-meta" style={{ color }}>
+                    <Icon name="clock" size={11} />
+                    {overdue ? 'Vencido' : urgent ? 'Urgente' : new Date(ticket.deadline).toLocaleDateString('pt-BR')}
+                  </span>
+                )
+              })()}
               <span className="tc-meta">
                 <Icon name="message" size={11} />
                 {actionCount} {actionCount === 1 ? 'ação' : 'ações'}

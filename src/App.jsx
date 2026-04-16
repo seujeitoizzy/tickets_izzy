@@ -1,8 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
-import { STATUSES } from './data/defaults'
-import TicketForm from './components/TicketForm'
 import TicketList from './components/TicketList'
 import TicketDetail from './components/TicketDetail'
 import Settings from './components/Settings'
@@ -11,18 +9,36 @@ import { useChatwoot } from './hooks/useChatwoot'
 import NovoTicket from './pages/NovoTicket'
 import FecharTicket from './pages/FecharTicket'
 import VerificarTicket from './pages/VerificarTicket'
+import Relatorios from './pages/Relatorios'
 import './App.css'
 import './pages/PageLoading.css'
 
-function Layout({ children, store, view, setView, filter, setFilter, search, setSearch, chatwoot }) {
+function NavGroup({ label, icon, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="nav-group">
+      <button className="nav-group-header" onClick={() => setOpen(v => !v)}>
+        <Icon name={icon} size={14} />
+        <span>{label}</span>
+        <span className={`nav-chevron ${open ? 'open' : ''}`}>
+          <Icon name="back" size={11} style={{ transform: open ? 'rotate(-90deg)' : 'rotate(-180deg)', transition: 'transform 0.2s' }} />
+        </span>
+      </button>
+      {open && <div className="nav-group-items">{children}</div>}
+    </div>
+  )
+}
+
+function Layout({ children, store, filter, setFilter, search, setSearch }) {
   const navigate = useNavigate()
   const location = useLocation()
-
-  const counts = { all: store.tickets.length }
-  STATUSES.forEach(s => { counts[s.id] = store.tickets.filter(t => t.status === s.id).length })
-
   const isSettings = location.pathname === '/settings'
   const isList = location.pathname === '/'
+
+  const counts = { all: store.tickets.length }
+  store.statuses.forEach(s => {
+    counts[s.id] = store.tickets.filter(t => t.status === s.id).length
+  })
 
   return (
     <div className="app">
@@ -33,39 +49,54 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
         </div>
 
         <nav className="sidebar-nav">
-          <button
-            className={`nav-item ${isList && filter === 'all' ? 'active' : ''}`}
-            onClick={() => { setFilter('all'); navigate('/') }}
-          >
-            <Icon name="all" size={15} />
-            <span>Todos os tickets</span>
-            <span className="nav-badge">{counts.all}</span>
-          </button>
-
-          <div className="nav-section-label">Por status</div>
-
-          {STATUSES.map(s => (
+          {/* Tickets */}
+          <NavGroup label="Tickets" icon="ticket" defaultOpen={true}>
             <button
-              key={s.id}
-              className={`nav-item ${isList && filter === s.id ? 'active' : ''}`}
-              onClick={() => { setFilter(s.id); navigate('/') }}
+              className={`nav-item ${isList && filter === 'all' ? 'active' : ''}`}
+              onClick={() => { setFilter('all'); navigate('/') }}
             >
-              <span className="nav-dot" style={{ background: s.color }} />
-              {s.label}
-              <span className="nav-badge">{counts[s.id] || 0}</span>
+              <Icon name="all" size={13} />
+              <span>Todos</span>
+              <span className="nav-badge">{counts.all}</span>
             </button>
-          ))}
+            {store.statuses.map(s => (
+              <button
+                key={s.id}
+                className={`nav-item ${isList && filter === s.id ? 'active' : ''}`}
+                onClick={() => { setFilter(s.id); navigate('/') }}
+              >
+                <span className="nav-dot" style={{ background: s.color }} />
+                <span>{s.label}</span>
+                <span className="nav-badge">{counts[s.id] || 0}</span>
+              </button>
+            ))}
+          </NavGroup>
+
+          {/* Relatórios */}
+          <NavGroup label="Relatórios" icon="star">
+            <button
+              className={`nav-item ${location.pathname === '/relatorios' ? 'active' : ''}`}
+              onClick={() => navigate('/relatorios')}
+            >
+              <Icon name="zap" size={13} />
+              <span>Visão Geral</span>
+            </button>
+          </NavGroup>
+
+          {/* Configurações */}
+          <NavGroup label="Configurações" icon="settings">
+            <button
+              className={`nav-item ${isSettings ? 'active' : ''}`}
+              onClick={() => navigate('/settings')}
+            >
+              <Icon name="tool" size={13} />
+              <span>Tipos, Categorias e Status</span>
+            </button>
+          </NavGroup>
         </nav>
 
         <div className="sidebar-bottom">
-          <button
-            className={`nav-item ${isSettings ? 'active' : ''}`}
-            onClick={() => navigate('/settings')}
-          >
-            <Icon name="settings" size={15} />
-            <span>Configurações</span>
-          </button>
-          <div className="sidebar-version">v1.0.20</div>
+          <div className="sidebar-version">v1.0.0-beta</div>
         </div>
       </aside>
 
@@ -82,7 +113,7 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
               />
             </div>
           )}
-          {!isSettings && location.pathname !== '/novo' && (
+          {location.pathname !== '/novo' && (
             <button className="btn-primary" onClick={() => navigate('/novo')}>
               <Icon name="plus" size={14} />
               Novo Ticket
@@ -99,7 +130,6 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
 }
 
 function ListaTickets({ store, filter, search }) {
-  const navigate = useNavigate()
   const [selectedId, setSelectedId] = useState(null)
 
   if (store.loading) {
@@ -129,6 +159,7 @@ function ListaTickets({ store, filter, search }) {
           ticket={ticket}
           categories={store.categories}
           types={store.types}
+          statuses={store.statuses}
           onBack={() => setSelectedId(null)}
           onUpdate={(id, changes) => store.updateTicket(id, changes)}
           onDelete={(id) => { store.deleteTicket(id); setSelectedId(null) }}
@@ -143,6 +174,7 @@ function ListaTickets({ store, filter, search }) {
       tickets={filtered}
       categories={store.categories}
       types={store.types}
+      statuses={store.statuses}
       onSelect={t => setSelectedId(t.id)}
     />
   )
@@ -150,32 +182,35 @@ function ListaTickets({ store, filter, search }) {
 
 export default function App() {
   const store = useStore()
-  const navigate = useNavigate()
   const location = useLocation()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
-  const addLog = useCallback((msg) => {
-    console.log(`[Chatwoot] ${msg}`)
-  }, [])
-
+  const addLog = useCallback((msg) => { console.log(`[Chatwoot] ${msg}`) }, [])
   const { data: chatwoot } = useChatwoot(addLog)
 
   return (
-    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} chatwoot={chatwoot}>
+    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch}>
       <Routes>
         <Route path="/" element={<ListaTickets store={store} filter={filter} search={search} />} />
         <Route path="/novo" element={<NovoTicket store={store} />} />
         <Route path="/fechar" element={<FecharTicket store={store} />} />
         <Route path="/verificar" element={<VerificarTicket store={store} />} />
+        <Route path="/relatorios" element={<Relatorios store={store} />} />
         <Route path="/settings" element={
           <Settings
             categories={store.categories}
             types={store.types}
+            statuses={store.statuses}
+            agents={store.agents}
             onAddCategory={store.addCategory}
             onRemoveCategory={store.removeCategory}
             onAddType={store.addType}
             onRemoveType={store.removeType}
+            onAddStatus={store.addStatus}
+            onRemoveStatus={store.removeStatus}
+            onAddAgent={store.addAgent}
+            onRemoveAgent={store.removeAgent}
           />
         } />
       </Routes>
