@@ -42,7 +42,22 @@ export default function VerificarTicket() {
     )
   }
 
-  // Abre detalhe do ticket selecionado
+  // Se só tem 1 ticket, abre direto no detalhe
+  if (tickets.length === 1 && !selectedId) {
+    return (
+      <TicketDetail
+        ticket={store.tickets.find(t => t.id === tickets[0].id)}
+        categories={store.categories}
+        types={store.types}
+        onBack={() => navigate('/')}
+        onUpdate={(id, changes) => store.updateTicket(id, changes)}
+        onDelete={(id) => { store.deleteTicket(id); navigate('/') }}
+        onAction={(id, action) => store.addAction(id, action)}
+      />
+    )
+  }
+
+  // Abre detalhe do ticket selecionado na lista
   if (selectedId) {
     const ticket = store.tickets.find(t => t.id === selectedId)
     if (ticket) {
