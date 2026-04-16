@@ -21,10 +21,17 @@ export default function VerificarTicket() {
   const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [selectedId, setSelectedId] = useState(null)
 
-  const tickets = store.tickets.filter(t =>
-    (chatwoot?.conversationId && t.chatwootConversationId === `#${chatwoot.conversationId}`) ||
-    (chatwoot?.clientName && t.clientName === chatwoot.clientName)
-  )
+  const tickets = store.tickets.filter(t => {
+    // Normaliza o conversationId do ticket (remove # e espaços)
+    const ticketConvId = String(t.chatwootConversationId || '').replace('#', '').trim()
+    const activeConvId = String(chatwoot?.conversationId || '').replace('#', '').trim()
+
+    const matchConv = activeConvId && ticketConvId && ticketConvId === activeConvId
+    const matchName = chatwoot?.clientName &&
+      t.clientName?.trim().toLowerCase() === chatwoot.clientName.trim().toLowerCase()
+
+    return matchConv || matchName
+  })
 
   if (!ready) {
     return (

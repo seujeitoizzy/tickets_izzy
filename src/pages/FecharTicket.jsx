@@ -13,13 +13,16 @@ export default function FecharTicket() {
   const [resolved, setResolved] = useState(false)
   const [note, setNote] = useState('')
 
-  const tickets = store.tickets.filter(t =>
-    t.status !== 'closed' &&
-    (
-      (chatwoot?.conversationId && t.chatwootConversationId === `#${chatwoot.conversationId}`) ||
-      (chatwoot?.clientName && t.clientName === chatwoot.clientName)
-    )
-  )
+  const tickets = store.tickets.filter(t => {
+    const ticketConvId = String(t.chatwootConversationId || '').replace('#', '').trim()
+    const activeConvId = String(chatwoot?.conversationId || '').replace('#', '').trim()
+
+    const matchConv = activeConvId && ticketConvId && ticketConvId === activeConvId
+    const matchName = chatwoot?.clientName &&
+      t.clientName?.trim().toLowerCase() === chatwoot.clientName.trim().toLowerCase()
+
+    return t.status !== 'closed' && (matchConv || matchName)
+  })
 
   function resolveTicket(ticket) {
     store.updateTicket(ticket.id, { status: 'closed' })

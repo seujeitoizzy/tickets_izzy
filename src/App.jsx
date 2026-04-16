@@ -64,7 +64,7 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.14</div>
+          <div className="sidebar-version">v1.0.15</div>
         </div>
       </aside>
 
