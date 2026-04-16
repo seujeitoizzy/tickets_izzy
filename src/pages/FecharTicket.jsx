@@ -1,18 +1,18 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { useChatwoot } from '../hooks/useChatwoot'
 import Icon from '../components/Icon'
 import './FecharTicket.css'
+import './PageLoading.css'
 
 export default function FecharTicket() {
   const navigate = useNavigate()
   const store = useStore()
-  const chatwoot = useChatwoot()
+  const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [resolved, setResolved] = useState(false)
   const [note, setNote] = useState('')
 
-  // Busca tickets abertos da conversa atual
   const tickets = store.tickets.filter(t =>
     t.status !== 'closed' &&
     (
@@ -23,20 +23,21 @@ export default function FecharTicket() {
 
   function resolveTicket(ticket) {
     store.updateTicket(ticket.id, { status: 'closed' })
-    if (note.trim()) {
-      store.addAction(ticket.id, {
-        actionType: 'resolution',
-        content: note.trim(),
-        author: chatwoot?.agentName || 'Agente',
-      })
-    } else {
-      store.addAction(ticket.id, {
-        actionType: 'resolution',
-        content: 'Ticket encerrado via Chatwoot',
-        author: chatwoot?.agentName || 'Agente',
-      })
-    }
+    store.addAction(ticket.id, {
+      actionType: 'resolution',
+      content: note.trim() || 'Ticket encerrado via Chatwoot',
+      author: chatwoot?.agentName || 'Agente',
+    })
     setResolved(true)
+  }
+
+  if (!ready) {
+    return (
+      <div className="page-loading">
+        <div className="loading-spinner" />
+        <p>Aguardando dados da conversa...</p>
+      </div>
+    )
   }
 
   return (

@@ -5,6 +5,7 @@ import { useChatwoot } from '../hooks/useChatwoot'
 import { PRIORITIES, STATUSES } from '../data/defaults'
 import Icon from '../components/Icon'
 import './VerificarTicket.css'
+import './PageLoading.css'
 
 function fmt(iso) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -13,13 +14,21 @@ function fmt(iso) {
 export default function VerificarTicket() {
   const navigate = useNavigate()
   const store = useStore()
-  const chatwoot = useChatwoot()
+  const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
 
-  // Busca todos os tickets do cliente da conversa ativa
   const tickets = store.tickets.filter(t =>
     (chatwoot?.conversationId && t.chatwootConversationId === `#${chatwoot.conversationId}`) ||
     (chatwoot?.clientName && t.clientName === chatwoot.clientName)
   )
+
+  if (!ready) {
+    return (
+      <div className="page-loading">
+        <div className="loading-spinner" />
+        <p>Aguardando dados da conversa...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="page-wrap">
@@ -49,21 +58,15 @@ export default function VerificarTicket() {
           <span className="summary-label">Total</span>
         </div>
         <div className="summary-card">
-          <span className="summary-num" style={{ color: '#60a5fa' }}>
-            {tickets.filter(t => t.status === 'open').length}
-          </span>
+          <span className="summary-num" style={{ color: '#60a5fa' }}>{tickets.filter(t => t.status === 'open').length}</span>
           <span className="summary-label">Abertos</span>
         </div>
         <div className="summary-card">
-          <span className="summary-num" style={{ color: '#fbbf24' }}>
-            {tickets.filter(t => t.status === 'in_progress').length}
-          </span>
+          <span className="summary-num" style={{ color: '#fbbf24' }}>{tickets.filter(t => t.status === 'in_progress').length}</span>
           <span className="summary-label">Em Progresso</span>
         </div>
         <div className="summary-card">
-          <span className="summary-num" style={{ color: '#4ade80' }}>
-            {tickets.filter(t => t.status === 'closed').length}
-          </span>
+          <span className="summary-num" style={{ color: '#4ade80' }}>{tickets.filter(t => t.status === 'closed').length}</span>
           <span className="summary-label">Fechados</span>
         </div>
       </div>
@@ -83,7 +86,7 @@ export default function VerificarTicket() {
             const priority = PRIORITIES.find(p => p.id === ticket.priority)
             const cat = store.categories.find(c => c.id === ticket.categoryId)
             return (
-              <div key={ticket.id} className="verify-card" onClick={() => navigate('/', { state: { openTicketId: ticket.id } })}>
+              <div key={ticket.id} className="verify-card" onClick={() => navigate('/')}>
                 <div className="vc-top">
                   <span className="vc-title">{ticket.title}</span>
                   <span className="vc-status" style={{ color: status?.color, borderColor: status?.color + '44', background: status?.color + '12' }}>

@@ -64,7 +64,7 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.10</div>
+          <div className="sidebar-version">v1.0.11</div>
         </div>
       </aside>
 
@@ -149,14 +149,14 @@ export default function App() {
     console.log(`[Chatwoot] ${msg}`)
   }, [])
 
-  const chatwoot = useChatwoot(addLog)
+  const { data: chatwoot } = useChatwoot(addLog)
 
   // Quando receber dados do Chatwoot, abre direto no formulário
   const prevConvRef = useRef(null)
   useEffect(() => {
     if (chatwoot?.conversationId && prevConvRef.current !== chatwoot.conversationId) {
       prevConvRef.current = chatwoot.conversationId
-      // Só redireciona se estiver na raiz
+      addLog(`[APP] Dados recebidos, abrindo formulário automaticamente`)
       if (location.pathname === '/') {
         navigate('/novo')
       }
