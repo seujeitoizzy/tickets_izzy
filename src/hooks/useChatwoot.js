@@ -68,7 +68,7 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
       const payload = msg.data || msg.payload || msg
       const ctx = parseContext(payload)
       addLog?.(`[CTX] accountId=${ctx.accountId} convId=${ctx.conversationId} client="${ctx.clientName}"`)
-
+      addLog?.(`[FULL_PAYLOAD] ${JSON.stringify(payload).slice(0, 800)}`)
       const toStore = {
         accountId: ctx.accountId,
         conversationId: ctx.conversationId,
