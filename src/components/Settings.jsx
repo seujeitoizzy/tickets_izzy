@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import './Settings.css'
 import Icon from './Icon'
-import { fetchChatwootAgents } from '../lib/chatwootApi'
+import { fetchChatwootAgents, saveToken, hasToken } from '../lib/chatwootApi'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#14b8a6', '#64748b']
 
@@ -168,38 +168,40 @@ function AgentManager({ agents, onAdd, onRemove }) {
   const [showPicker, setShowPicker] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [importMsg, setImportMsg] = useState(null) // { text, type: 'success'|'error' }
+  const [importMsg, setImportMsg] = useState(null)
+  const [needToken, setNeedToken] = useState(false)
+  const [tokenInput, setTokenInput] = useState('')
 
-  async function importFromChatwoot() {
+  async function doImport() {
     setImporting(true)
     setImportMsg(null)
+    setNeedToken(false)
     try {
       const data = await fetchChatwootAgents()
       const existingNames = new Set(agents.map(a => a.name.toLowerCase()))
       let added = 0
-
       for (const agent of data) {
         if (!existingNames.has(agent.name.toLowerCase())) {
-          await onAdd({
-            name: agent.name,
-            email: agent.email || '',
-            phone: '',
-            avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)],
-          })
+          await onAdd({ name: agent.name, email: agent.email || '', phone: '', avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)] })
           added++
         }
       }
-
-      setImportMsg(
-        added === 0
-          ? { text: 'Todos os agentes já estão cadastrados.', type: 'error' }
-          : { text: `${added} agente(s) importado(s) com sucesso!`, type: 'success' }
-      )
+      setImportMsg(added === 0 ? { text: 'Todos os agentes ja estao cadastrados.', type: 'error' } : { text: `${added} agente(s) importado(s)!`, type: 'success' })
     } catch (e) {
-      setImportMsg({ text: e.message, type: 'error' })
+      if (e.message === 'TOKEN_NEEDED') setNeedToken(true)
+      else setImportMsg({ text: e.message, type: 'error' })
     }
     setImporting(false)
   }
+
+  function confirmToken() {
+    if (!tokenInput.trim()) return
+    saveToken(tokenInput)
+    setTokenInput('')
+    doImport()
+  }
+
+  function initials(name) { return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() }
 
   function submit(e) {
     e.preventDefault()
@@ -210,23 +212,25 @@ function AgentManager({ agents, onAdd, onRemove }) {
     setShowPicker(false)
   }
 
-  function initials(name) {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-  }
-
   return (
-    <SectionCard title="Responsáveis">
+    <SectionCard title="Responsaveis">
       <div className="agent-import-bar">
-        <button type="button" className="btn-import" onClick={importFromChatwoot} disabled={importing}>
-          {importing
-            ? <><div className="btn-spinner" /> Importando...</>
-            : <><Icon name="transfer" size={13} /> Sincronizar com Chatwoot</>
-          }
+        <button type="button" className="btn-import" onClick={doImport} disabled={importing}>
+          {importing ? <><div className="btn-spinner" /> Importando...</> : <><Icon name="transfer" size={13} /> Sincronizar com Chatwoot</>}
         </button>
-        {importMsg && (
-          <span className={`import-msg ${importMsg.type}`}>{importMsg.text}</span>
-        )}
+        {importMsg && <span className={`import-msg ${importMsg.type}`}>{importMsg.text}</span>}
       </div>
+
+      {needToken && (
+        <div className="token-form">
+          <p className="token-hint">Informe seu <strong>API Access Token</strong> do Chatwoot.<br />Acesse: <strong>Perfil &rarr; Access Token</strong></p>
+          <div className="inline-form-row">
+            <input className="inline-input" placeholder="Cole o Access Token aqui" value={tokenInput} onChange={e => setTokenInput(e.target.value)} type="password" onKeyDown={e => e.key === 'Enter' && confirmToken()} />
+            <button type="button" className="btn-add-inline" onClick={confirmToken}><Icon name="check" size={13} /></button>
+          </div>
+          <p className="token-hint" style={{ marginTop: 6, fontSize: 11 }}>Salvo localmente, nao enviado a servidores externos.</p>
+        </div>
+      )}
 
       <ItemList items={agents} renderItem={a => (
         <div key={a.id} className="settings-item agent-item">
@@ -243,36 +247,25 @@ function AgentManager({ agents, onAdd, onRemove }) {
       )} />
 
       {!showForm ? (
-        <button className="btn-add" onClick={() => setShowForm(true)}>
-          <Icon name="plus" size={13} /> Adicionar manualmente
-        </button>
+        <button className="btn-add" onClick={() => setShowForm(true)}><Icon name="plus" size={13} /> Adicionar manualmente</button>
       ) : (
         <form className="agent-form" onSubmit={submit}>
           <div className="agent-form-header">
             <div className="color-dropdown-wrap">
               <button type="button" className="agent-avatar-btn" style={{ background: form.avatarColor }} onClick={() => setShowPicker(v => !v)}>
-                {form.name
-                  ? <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{form.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}</span>
-                  : <Icon name="user" size={16} style={{ color: '#fff' }} />
-                }
+                {form.name ? <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{form.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}</span> : <Icon name="user" size={16} style={{ color: '#fff' }} />}
               </button>
               {showPicker && (
                 <div className="color-dropdown-menu">
-                  {COLORS.map(c => (
-                    <button key={c} type="button" className={`color-menu-item ${form.avatarColor === c ? 'selected' : ''}`}
-                      style={{ background: c }} onClick={() => { setForm(p => ({ ...p, avatarColor: c })); setShowPicker(false) }} />
-                  ))}
+                  {COLORS.map(c => <button key={c} type="button" className={`color-menu-item ${form.avatarColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setForm(p => ({ ...p, avatarColor: c })); setShowPicker(false) }} />)}
                 </div>
               )}
             </div>
             <div className="agent-form-fields">
-              <input className="agent-input" placeholder="Nome completo *" value={form.name}
-                onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+              <input className="agent-input" placeholder="Nome completo *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
               <div className="agent-form-row">
-                <input className="agent-input" placeholder="E-mail" type="email" value={form.email}
-                  onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-                <input className="agent-input" placeholder="Telefone" value={form.phone}
-                  onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+                <input className="agent-input" placeholder="E-mail" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                <input className="agent-input" placeholder="Telefone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
               </div>
             </div>
           </div>
@@ -299,3 +292,4 @@ export default function Settings({ categories, types, statuses, agents, onAddCat
     </div>
   )
 }
+

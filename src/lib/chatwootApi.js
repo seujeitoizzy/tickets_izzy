@@ -36,24 +36,33 @@ function getAccountId() {
 }
 
 export async function fetchChatwootAgents() {
-  const auth = getAuth()
   const accountId = getAccountId()
-
   if (!accountId) throw new Error('Account ID não encontrado. Abra o app dentro do Chatwoot primeiro.')
-  if (!auth) throw new Error('Token de autenticação não encontrado. Reabra o app dentro do Chatwoot.')
+
+  // Tenta token salvo pelo usuário
+  const savedToken = localStorage.getItem('chatwoot_user_token')
+  if (!savedToken) throw new Error('TOKEN_NEEDED')
 
   const res = await fetch(`${CHATWOOT_HOST}/api/v1/accounts/${accountId}/agents`, {
     headers: {
-      'access-token': auth['access-token'],
-      'client': auth['client'],
-      'uid': auth['uid'],
-      'token-type': auth['token-type'],
+      'api_access_token': savedToken,
       'Content-Type': 'application/json',
     }
   })
 
-  if (res.status === 401) throw new Error('Sessão expirada. Reabra o app dentro do Chatwoot.')
+  if (res.status === 401) {
+    localStorage.removeItem('chatwoot_user_token')
+    throw new Error('Token inválido ou expirado. Informe novamente.')
+  }
   if (!res.ok) throw new Error(`Erro ${res.status} ao buscar agentes.`)
 
   return await res.json()
+}
+
+export function saveToken(token) {
+  localStorage.setItem('chatwoot_user_token', token.trim())
+}
+
+export function hasToken() {
+  return !!localStorage.getItem('chatwoot_user_token')
 }
