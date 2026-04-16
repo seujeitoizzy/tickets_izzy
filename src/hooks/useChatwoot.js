@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const CHATWOOT_HOST = 'https://chat.izzy.app.br'
 const SESSION_KEY = 'chatwoot.context'
+// Tempo máximo esperando postMessage antes de usar sessionStorage
+const FALLBACK_TIMEOUT_MS = 1500
 
 function buildConversationLink(accountId, conversationId) {
   if (!accountId || !conversationId) return null
@@ -38,29 +40,18 @@ function buildResult(ctx) {
   }
 }
 
-// ignoreSession = true nas rotas que precisam sempre da conversa ATIVA (ex: /novo, /fechar, /verificar)
-export function useChatwoot(addLog, { ignoreSession = false } = {}) {
-  const [data, setData] = useState(() => {
-    if (ignoreSession) {
-      addLog?.('[INIT] ignoreSession=true, aguardando postMessage')
-      return null
-    }
-    try {
-      const stored = sessionStorage.getItem(SESSION_KEY)
-      if (stored) {
-        const ctx = JSON.parse(stored)
-        addLog?.(`[INIT] sessionStorage: ${stored}`)
-        return buildResult(ctx)
-      } else {
-        addLog?.('[INIT] Nenhum dado no sessionStorage')
-      }
-    } catch (e) {
-      addLog?.(`[INIT] Erro: ${e.message}`)
-    }
-    return null
-  })
+function loadSession() {
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch {}
+  return null
+}
 
-  const [ready, setReady] = useState(!ignoreSession)
+export function useChatwoot(addLog, { ignoreSession = false } = {}) {
+  const [data, setData] = useState(null)
+  const [ready, setReady] = useState(false)
+  const receivedPostMessage = useRef(false)
 
   useEffect(() => {
     function handleMessage(event) {
@@ -69,16 +60,14 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
         try { msg = JSON.parse(msg) } catch { return }
       }
 
-      addLog?.(`[MSG] origin="${event.origin}" event="${msg?.event}" type="${msg?.type}" keys=${Object.keys(msg || {}).join(',')}`)
+      addLog?.(`[MSG] origin="${event.origin}" event="${msg?.event}" keys=${Object.keys(msg || {}).join(',')}`)
 
       const isAppContext = msg?.event === 'appContext' || msg?.type === 'appContext'
       if (!isAppContext) return
 
       const payload = msg.data || msg.payload || msg
-      addLog?.(`[PAYLOAD] ${JSON.stringify(payload).slice(0, 400)}`)
-
       const ctx = parseContext(payload)
-      addLog?.(`[CTX] accountId=${ctx.accountId} convId=${ctx.conversationId} client="${ctx.clientName}" agent="${ctx.agentName}"`)
+      addLog?.(`[CTX] accountId=${ctx.accountId} convId=${ctx.conversationId} client="${ctx.clientName}"`)
 
       const toStore = {
         accountId: ctx.accountId,
@@ -92,6 +81,7 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toStore))
       addLog?.(`[SAVED] ${JSON.stringify(toStore)}`)
 
+      receivedPostMessage.current = true
       setData(buildResult(ctx))
       setReady(true)
     }
@@ -100,8 +90,32 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
     addLog?.('[READY] Listener ativo, enviando chatwoot:ready')
     try { window.parent.postMessage({ type: 'chatwoot:ready' }, '*') } catch {}
 
-    return () => window.removeEventListener('message', handleMessage)
+    // Fallback: se não receber postMessage em tempo hábil, usa sessionStorage
+    const timer = setTimeout(() => {
+      if (!receivedPostMessage.current) {
+        const session = loadSession()
+        if (session) {
+          addLog?.(`[FALLBACK] postMessage não chegou, usando sessionStorage: ${JSON.stringify(session)}`)
+          setData(buildResult(session))
+        } else {
+          addLog?.('[FALLBACK] Sem postMessage e sem sessionStorage')
+        }
+        setReady(true)
+      }
+    }, FALLBACK_TIMEOUT_MS)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      clearTimeout(timer)
+    }
   }, [])
+
+  // Para rota / (sem ignoreSession), retorna sessionStorage imediatamente sem loading
+  if (!ignoreSession) {
+    const session = loadSession()
+    const staticData = data || (session ? buildResult(session) : null)
+    return { data: staticData, ready: true }
+  }
 
   return { data, ready }
 }
