@@ -286,47 +286,28 @@ export function useStore() {
   async function addAgent(agent) {
     const { data, error } = await supabase
       .from('ast_agents')
-      .insert({ name: agent.name, email: agent.email || null, phone: agent.phone || null, avatar_color: agent.avatarColor || '#6366f1' })
+      .insert({ name: agent.name, email: agent.email || null, avatar_color: agent.avatarColor || '#6366f1' })
       .select()
       .single()
-    if (error) { console.error('[addAgent]', error); return }
+    if (error) { console.error('[addAgent]', error.code, error.message); return }
     await fetchAgents()
   }
 
   async function bulkAddAgents(agentList) {
-    console.log('[BULK] Iniciando com', agentList.length, 'agentes')
-
     const { data: existing, error: fetchError } = await supabase
-      .from('ast_agents')
-      .select('name')
-      .eq('active', true)
-
-    if (fetchError) { console.error('[BULK] Erro ao buscar existentes:', fetchError); return 0 }
-    console.log('[BULK] Existentes no banco:', existing?.length, existing?.map(a => a.name))
+      .from('ast_agents').select('name').eq('active', true)
+    if (fetchError) { console.error('[bulkAddAgents]', fetchError); return 0 }
 
     const existingNames = new Set((existing || []).map(a => a.name.toLowerCase()))
-
     const toInsert = agentList
       .filter(a => !existingNames.has(a.name.toLowerCase()))
-      .map(a => ({
-        name: a.name,
-        email: a.email || null,
-        phone: a.phone || null,
-        avatar_color: a.avatarColor || '#6366f1',
-      }))
-
-    console.log('[BULK] Para inserir:', toInsert.length, toInsert.map(a => a.name))
+      .map(a => ({ name: a.name, email: a.email || null, avatar_color: a.avatarColor || '#6366f1' }))
 
     if (toInsert.length === 0) return 0
 
-    const { data, error } = await supabase
-      .from('ast_agents')
-      .insert(toInsert)
-      .select()
+    const { data, error } = await supabase.from('ast_agents').insert(toInsert).select()
+    if (error) { console.error('[bulkAddAgents]', error.code, error.message); return 0 }
 
-    if (error) { console.error('[BULK] Erro no insert:', error.code, error.message, error.hint); return 0 }
-
-    console.log('[BULK] Inseridos com sucesso:', data?.length)
     await fetchAgents()
     return data.length
   }

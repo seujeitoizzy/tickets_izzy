@@ -3,14 +3,30 @@ import './TicketList.css'
 import { PRIORITIES } from '../data/defaults'
 import Icon from './Icon'
 
-function timeAgo(iso) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return 'agora'
-  if (m < 60) return `${m}m atrás`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h atrás`
-  return `${Math.floor(h / 24)}d atrás`
+function fmt(iso) {
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function DeadlineCell({ ticket }) {
+  if (ticket.deadlineIndeterminate) return <span className="deadline-indeterminate">Indeterminado</span>
+  if (!ticket.deadline) return <span className="deadline-none">—</span>
+
+  const diffH = (new Date(ticket.deadline) - new Date()) / 3600000
+  const overdue = diffH < 0
+  const urgent = diffH >= 0 && diffH < 24
+  const color = overdue ? '#ef4444' : urgent ? '#f97316' : '#4ade80'
+
+  return (
+    <span className="deadline-cell" style={{ color, background: color + '12', borderColor: color + '33' }}>
+      <Icon name="clock" size={11} />
+      {new Date(ticket.deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+      {overdue && ' · Vencido'}
+      {urgent && !overdue && ' · Urgente'}
+    </span>
+  )
 }
 
 export default function TicketList({ tickets, categories, types, statuses = [], onSelect }) {
@@ -24,85 +40,107 @@ export default function TicketList({ tickets, categories, types, statuses = [], 
   }
 
   return (
-    <div className="ticket-list">
-      {tickets.map(ticket => {
-        const cat = categories.find(c => c.id === ticket.categoryId)
-        const type = types.find(t => t.id === ticket.typeId)
-        const priority = PRIORITIES.find(p => p.id === ticket.priority)
-        const status = statuses.find(s => s.id === ticket.status)
-        const actionCount = ticket.timeline?.filter(e => e.type === 'action').length || 0
+    <div className="ticket-table-wrap">
+      <table className="ticket-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Nº / Título</th>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>Categoria</th>
+            <th>Responsável</th>
+            <th>Prioridade</th>
+            <th>Prazo Final</th>
+            <th>Criado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tickets.map((ticket, idx) => {
+            const cat = categories.find(c => c.id === ticket.categoryId)
+            const type = types.find(t => t.id === ticket.typeId)
+            const priority = PRIORITIES.find(p => p.id === ticket.priority)
+            const status = statuses.find(s => s.id === ticket.status)
+            const ticketNum = `#${String(idx + 1).padStart(4, '0')}`
 
-        return (
-          <div key={ticket.id} className="ticket-card" onClick={() => onSelect(ticket)}>
-            <div className="tc-left">
-              <div className="tc-top">
-                {type && (
-                  <span className="tc-type">
-                    <Icon name={type.icon} size={12} />
-                    {type.label}
+            return (
+              <tr key={ticket.id} className="ticket-row" onClick={() => onSelect(ticket)}>
+                {/* Status */}
+                <td>
+                  <span
+                    className="tbl-status"
+                    style={{ color: status?.color, background: status?.color + '15', borderColor: status?.color + '44' }}
+                  >
+                    <span className="tbl-status-dot" style={{ background: status?.color }} />
+                    {status?.label || ticket.status}
                   </span>
-                )}
-                {cat && (
-                  <span className="tc-cat" style={{ background: cat.color + '18', color: cat.color, borderColor: cat.color + '44' }}>
-                    {cat.label}
+                </td>
+
+                {/* Nº / Título */}
+                <td className="tbl-title-cell">
+                  <span className="tbl-num">{ticketNum}</span>
+                  <span className="tbl-title">{ticket.title}</span>
+                </td>
+
+                {/* Cliente */}
+                <td>
+                  {ticket.clientName ? (
+                    <div className="tbl-client">
+                      <span className="tbl-client-name">{ticket.clientName}</span>
+                      {ticket.chatwootConversationId && (
+                        <span className="tbl-conv-id">{ticket.chatwootConversationId}</span>
+                      )}
+                    </div>
+                  ) : <span className="tbl-empty-val">—</span>}
+                </td>
+
+                {/* Tipo */}
+                <td>
+                  {type ? (
+                    <span className="tbl-type">
+                      <Icon name={type.icon} size={12} style={{ color: '#64748b' }} />
+                      {type.label}
+                    </span>
+                  ) : <span className="tbl-empty-val">—</span>}
+                </td>
+
+                {/* Categoria */}
+                <td>
+                  {cat ? (
+                    <span className="tbl-cat" style={{ color: cat.color, background: cat.color + '15', borderColor: cat.color + '44' }}>
+                      {cat.label}
+                    </span>
+                  ) : <span className="tbl-empty-val">—</span>}
+                </td>
+
+                {/* Responsável */}
+                <td>
+                  {ticket.assignee ? (
+                    <span className="tbl-assignee">
+                      <span className="tbl-avatar">{ticket.assignee.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}</span>
+                      {ticket.assignee}
+                    </span>
+                  ) : <span className="tbl-empty-val">—</span>}
+                </td>
+
+                {/* Prioridade */}
+                <td>
+                  <span className="tbl-priority" style={{ color: priority?.color }}>
+                    <span className="tbl-priority-bar" style={{ background: priority?.color }} />
+                    {priority?.label}
                   </span>
-                )}
-                <span className="tc-priority" style={{ color: priority?.color }}>
-                  {priority?.label}
-                </span>
-              </div>
+                </td>
 
-              <div className="tc-title">{ticket.title}</div>
+                {/* Prazo */}
+                <td><DeadlineCell ticket={ticket} /></td>
 
-              {ticket.clientName && (
-                <div className="tc-client">
-                  <Icon name="user" size={12} style={{ color: '#475569' }} />
-                  <span>{ticket.clientName}</span>
-                  {ticket.chatwootConversationId && (
-                    <span className="tc-conv-id">{ticket.chatwootConversationId}</span>
-                  )}
-                </div>
-              )}
-
-              {ticket.description && (
-                <p className="tc-desc">{ticket.description.slice(0, 120)}{ticket.description.length > 120 ? '…' : ''}</p>
-              )}
-            </div>
-
-            <div className="tc-right">
-              <span className="status-badge" style={{ color: status?.color, borderColor: status?.color + '44', background: status?.color + '12' }}>
-                {status?.label}
-              </span>
-              {ticket.assignee && (
-                <span className="tc-meta">
-                  <Icon name="user" size={11} />
-                  {ticket.assignee}
-                </span>
-              )}
-              <span className="tc-meta">
-                <Icon name="clock" size={11} />
-                {timeAgo(ticket.createdAt)}
-              </span>
-              {!ticket.deadlineIndeterminate && ticket.deadline && (() => {
-                const diffH = (new Date(ticket.deadline) - new Date()) / 3600000
-                const overdue = diffH < 0
-                const urgent = diffH >= 0 && diffH < 24
-                const color = overdue ? '#ef4444' : urgent ? '#f97316' : '#64748b'
-                return (
-                  <span className="tc-meta" style={{ color }}>
-                    <Icon name="clock" size={11} />
-                    {overdue ? 'Vencido' : urgent ? 'Urgente' : new Date(ticket.deadline).toLocaleDateString('pt-BR')}
-                  </span>
-                )
-              })()}
-              <span className="tc-meta">
-                <Icon name="message" size={11} />
-                {actionCount} {actionCount === 1 ? 'ação' : 'ações'}
-              </span>
-            </div>
-          </div>
-        )
-      })}
+                {/* Criado em */}
+                <td className="tbl-date">{fmt(ticket.createdAt)}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
