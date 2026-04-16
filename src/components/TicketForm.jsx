@@ -15,10 +15,10 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, init
     priority: initial.priority || 'medium',
     categoryId: initial.categoryId || (categories[0]?.id || ''),
     typeId: initial.typeId || (types[0]?.id || ''),
-    assignee: initial.assignee || '',
+    assignee: initial.assignee || chatwootInitial?.agentName || '',
     clientName: initial.clientName || chatwootInitial?.clientName || '',
     chatwootLink: initial.chatwootLink || chatwootInitial?.chatwootLink || '',
-    chatwootConversationId: initial.chatwootConversationId || chatwootInitial?.conversationId || '',
+    chatwootConversationId: initial.chatwootConversationId || chatwootInitial?.conversationLabel || '',
   })
 
   function handle(e) {

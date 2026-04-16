@@ -122,9 +122,12 @@ export default function App() {
               <div className="chatwoot-banner-info">
                 <Icon name="user" size={14} />
                 <span>Conversa ativa:</span>
-                <strong>{chatwoot.clientName}</strong>
-                {chatwoot.conversationId && (
-                  <span className="banner-conv-id">{chatwoot.conversationId}</span>
+                <strong>{chatwoot.clientName || 'Cliente'}</strong>
+                {chatwoot.conversationLabel && (
+                  <span className="banner-conv-id">{chatwoot.conversationLabel}</span>
+                )}
+                {chatwoot.agentName && (
+                  <span className="banner-agent">Agente: {chatwoot.agentName}</span>
                 )}
               </div>
               <button className="banner-btn" onClick={openNewWithChatwoot}>
