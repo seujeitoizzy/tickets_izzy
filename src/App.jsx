@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useStore } from './store/useStore'
 import { STATUSES } from './data/defaults'
 import TicketForm from './components/TicketForm'
@@ -21,6 +21,16 @@ export default function App() {
   }, [])
 
   const chatwoot = useChatwoot(addLog)
+
+  // Quando receber dados do Chatwoot, abre direto no formulário
+  const prevChatwootRef = useRef(null)
+  useEffect(() => {
+    if (chatwoot && chatwoot.conversationId && prevChatwootRef.current !== chatwoot.conversationId) {
+      prevChatwootRef.current = chatwoot.conversationId
+      addLog(`[APP] Dados recebidos, abrindo formulário automaticamente`)
+      setView('new')
+    }
+  }, [chatwoot])
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -99,7 +109,7 @@ export default function App() {
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.4</div>
+          <div className="sidebar-version">v1.0.5</div>
         </div>
       </aside>
 

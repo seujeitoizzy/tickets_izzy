@@ -8,30 +8,28 @@ function buildConversationLink(accountId, conversationId) {
   return `${CHATWOOT_HOST}/app/accounts/${accountId}/conversations/${conversationId}`
 }
 
-function parseContext(payload) {
+function parseContext(data) {
+  const conv = data?.conversation || {}
+  const agent = data?.currentAgent || data?.current_agent || {}
+  const account = data?.currentAccount || data?.current_account || data?.account || {}
+
   const accountId =
-    payload?.currentAccount?.id ||
-    payload?.conversation?.account_id ||
-    payload?.currentAgent?.account_id ||
-    payload?.account?.id ||
-    payload?.accountId ||
+    account?.id ||
+    conv?.account_id ||
+    agent?.account_id ||
+    data?.accountId ||
     null
 
-  const conversationId =
-    payload?.conversation?.id ||
-    payload?.conversationId ||
-    null
+  const conversationId = conv?.id || data?.conversationId || null
 
-  const agentId = payload?.currentAgent?.id || null
-  const agentName = payload?.currentAgent?.name || null
-  const agentEmail = payload?.currentAgent?.email || null
+  const clientName = conv?.meta?.sender?.name || data?.contact?.name || null
+  const clientPhone = conv?.meta?.sender?.phone_number || null
 
-  const clientName =
-    payload?.conversation?.meta?.sender?.name ||
-    payload?.contact?.name ||
-    null
+  const agentId = agent?.id || null
+  const agentName = agent?.name || null
+  const agentEmail = agent?.email || null
 
-  return { accountId, conversationId, agentId, agentName, agentEmail, clientName }
+  return { accountId, conversationId, clientName, clientPhone, agentId, agentName, agentEmail }
 }
 
 export function useChatwoot(addLog) {
@@ -40,7 +38,7 @@ export function useChatwoot(addLog) {
       const stored = sessionStorage.getItem(SESSION_KEY)
       if (stored) {
         const ctx = JSON.parse(stored)
-        addLog?.(`[INIT] Dados recuperados do sessionStorage: ${stored}`)
+        addLog?.(`[INIT] sessionStorage: ${stored}`)
         return {
           ...ctx,
           chatwootLink: buildConversationLink(ctx.accountId, ctx.conversationId),
@@ -50,32 +48,33 @@ export function useChatwoot(addLog) {
         addLog?.('[INIT] Nenhum dado no sessionStorage')
       }
     } catch (e) {
-      addLog?.(`[INIT] Erro ao ler sessionStorage: ${e.message}`)
+      addLog?.(`[INIT] Erro: ${e.message}`)
     }
     return null
   })
 
   useEffect(() => {
     function handleMessage(event) {
-      const msg = event.data
-      addLog?.(`[MSG] origin="${event.origin}" type="${msg?.type}" payload=${JSON.stringify(msg).slice(0, 300)}`)
+      // Tenta parsear se vier como string
+      let msg = event.data
+      if (typeof msg === 'string') {
+        try { msg = JSON.parse(msg) } catch { return }
+      }
 
-      // Chatwoot usa msg.event, não msg.type
-      if (!msg || msg.event !== 'appContext') {
-        addLog?.(`[MSG] Ignorado — event esperado: "appContext", recebido: "${msg?.event}"`)
+      addLog?.(`[MSG] origin="${event.origin}" event="${msg?.event}" type="${msg?.type}" keys=${Object.keys(msg || {}).join(',')}`)
+
+      // Chatwoot envia { event: "appContext", data: {...} }
+      const isAppContext = msg?.event === 'appContext' || msg?.type === 'appContext'
+      if (!isAppContext) {
+        addLog?.(`[SKIP] Não é appContext`)
         return
       }
 
       const payload = msg.data || msg.payload || msg
-      addLog?.(`[PARSE] payload=${JSON.stringify(payload).slice(0, 300)}`)
+      addLog?.(`[PAYLOAD] ${JSON.stringify(payload).slice(0, 400)}`)
 
       const ctx = parseContext(payload)
-      addLog?.(`[CTX] accountId=${ctx.accountId} conversationId=${ctx.conversationId} clientName=${ctx.clientName} agentName=${ctx.agentName}`)
-
-      if (!ctx.accountId && !ctx.conversationId) {
-        addLog?.('[CTX] Nenhum accountId ou conversationId encontrado, ignorando')
-        return
-      }
+      addLog?.(`[CTX] accountId=${ctx.accountId} convId=${ctx.conversationId} client="${ctx.clientName}" agent="${ctx.agentName}"`)
 
       const toStore = {
         accountId: ctx.accountId,
@@ -83,9 +82,11 @@ export function useChatwoot(addLog) {
         agentId: ctx.agentId,
         agentName: ctx.agentName,
         agentEmail: ctx.agentEmail,
+        clientName: ctx.clientName,
+        clientPhone: ctx.clientPhone,
       }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(toStore))
-      addLog?.(`[SESSION] Salvo: ${JSON.stringify(toStore)}`)
+      addLog?.(`[SAVED] ${JSON.stringify(toStore)}`)
 
       setData({
         ...ctx,
@@ -95,8 +96,8 @@ export function useChatwoot(addLog) {
     }
 
     window.addEventListener('message', handleMessage)
-    addLog?.('[READY] Listener registrado, enviando chatwoot:ready para parent')
-    window.parent.postMessage({ type: 'chatwoot:ready' }, '*')
+    addLog?.('[READY] Listener ativo, enviando chatwoot:ready')
+    try { window.parent.postMessage({ type: 'chatwoot:ready' }, '*') } catch {}
 
     return () => window.removeEventListener('message', handleMessage)
   }, [])
