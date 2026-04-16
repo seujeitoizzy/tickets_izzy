@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import './TicketForm.css'
 import { PRIORITIES } from '../data/defaults'
 import Icon from './Icon'
@@ -20,18 +20,6 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, init
     chatwootLink: initial.chatwootLink || chatwootInitial?.chatwootLink || '',
     chatwootConversationId: initial.chatwootConversationId || chatwootInitial?.conversationLabel || '',
   })
-
-  // Quando chatwootInitial chegar (postMessage atrasado), preenche os campos vazios
-  useEffect(() => {
-    if (!chatwootInitial) return
-    setForm(prev => ({
-      ...prev,
-      clientName: prev.clientName || chatwootInitial.clientName || '',
-      chatwootLink: prev.chatwootLink || chatwootInitial.chatwootLink || '',
-      chatwootConversationId: prev.chatwootConversationId || chatwootInitial.conversationLabel || '',
-      assignee: prev.assignee || chatwootInitial.agentName || '',
-    }))
-  }, [chatwootInitial?.conversationId])
 
   function handle(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))

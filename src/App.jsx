@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { STATUSES } from './data/defaults'
+import TicketForm from './components/TicketForm'
 import TicketList from './components/TicketList'
 import TicketDetail from './components/TicketDetail'
 import Settings from './components/Settings'
@@ -12,7 +13,7 @@ import FecharTicket from './pages/FecharTicket'
 import VerificarTicket from './pages/VerificarTicket'
 import './App.css'
 
-function Layout({ children, store, filter, setFilter, search, setSearch }) {
+function Layout({ children, store, view, setView, filter, setFilter, search, setSearch, chatwoot }) {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -63,7 +64,7 @@ function Layout({ children, store, filter, setFilter, search, setSearch }) {
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.17</div>
+          <div className="sidebar-version">v1.0.16</div>
         </div>
       </aside>
 
@@ -97,6 +98,7 @@ function Layout({ children, store, filter, setFilter, search, setSearch }) {
 }
 
 function ListaTickets({ store, filter, search }) {
+  const navigate = useNavigate()
   const [selectedId, setSelectedId] = useState(null)
 
   const filtered = store.tickets.filter(t => {
@@ -150,12 +152,12 @@ export default function App() {
   const { data: chatwoot } = useChatwoot(addLog)
 
   return (
-    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch}>
+    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} chatwoot={chatwoot}>
       <Routes>
         <Route path="/" element={<ListaTickets store={store} filter={filter} search={search} />} />
-        <Route path="/novo" element={<NovoTicket store={store} chatwoot={chatwoot} />} />
-        <Route path="/fechar" element={<FecharTicket store={store} chatwoot={chatwoot} />} />
-        <Route path="/verificar" element={<VerificarTicket store={store} chatwoot={chatwoot} />} />
+        <Route path="/novo" element={<NovoTicket />} />
+        <Route path="/fechar" element={<FecharTicket />} />
+        <Route path="/verificar" element={<VerificarTicket />} />
         <Route path="/settings" element={
           <Settings
             categories={store.categories}
