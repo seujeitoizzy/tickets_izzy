@@ -1,28 +1,29 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store/useStore'
-import { useChatwoot } from '../hooks/useChatwoot'
 import Icon from '../components/Icon'
 import './FecharTicket.css'
 import './PageLoading.css'
 
-export default function FecharTicket() {
+export default function FecharTicket({ store, chatwoot }) {
   const navigate = useNavigate()
-  const store = useStore()
-  const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [resolved, setResolved] = useState(false)
   const [note, setNote] = useState('')
+  const [ready, setReady] = useState(!!chatwoot)
 
-  const tickets = store.tickets.filter(t => {
+  useEffect(() => {
+    if (chatwoot) { setReady(true); return }
+    const t = setTimeout(() => setReady(true), 1500)
+    return () => clearTimeout(t)
+  }, [chatwoot])
+
+  const tickets = ready ? store.tickets.filter(t => {
     const ticketConvId = String(t.chatwootConversationId || '').replace('#', '').trim()
     const activeConvId = String(chatwoot?.conversationId || '').replace('#', '').trim()
-
     const matchConv = activeConvId && ticketConvId && ticketConvId === activeConvId
     const matchName = chatwoot?.clientName &&
       t.clientName?.trim().toLowerCase() === chatwoot.clientName.trim().toLowerCase()
-
     return t.status !== 'closed' && (matchConv || matchName)
-  })
+  }) : []
 
   function resolveTicket(ticket) {
     store.updateTicket(ticket.id, { status: 'closed' })

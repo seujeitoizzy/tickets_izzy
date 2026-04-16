@@ -1,7 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store/useStore'
-import { useChatwoot } from '../hooks/useChatwoot'
 import { PRIORITIES, STATUSES } from '../data/defaults'
 import Icon from '../components/Icon'
 import TicketDetail from '../components/TicketDetail'
@@ -15,23 +13,25 @@ function fmt(iso) {
   })
 }
 
-export default function VerificarTicket() {
+export default function VerificarTicket({ store, chatwoot }) {
   const navigate = useNavigate()
-  const store = useStore()
-  const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [selectedId, setSelectedId] = useState(null)
+  const [ready, setReady] = useState(!!chatwoot)
 
-  const tickets = store.tickets.filter(t => {
-    // Normaliza o conversationId do ticket (remove # e espaços)
+  useEffect(() => {
+    if (chatwoot) { setReady(true); return }
+    const t = setTimeout(() => setReady(true), 1500)
+    return () => clearTimeout(t)
+  }, [chatwoot])
+
+  const tickets = ready ? store.tickets.filter(t => {
     const ticketConvId = String(t.chatwootConversationId || '').replace('#', '').trim()
     const activeConvId = String(chatwoot?.conversationId || '').replace('#', '').trim()
-
     const matchConv = activeConvId && ticketConvId && ticketConvId === activeConvId
     const matchName = chatwoot?.clientName &&
       t.clientName?.trim().toLowerCase() === chatwoot.clientName.trim().toLowerCase()
-
     return matchConv || matchName
-  })
+  }) : []
 
   if (!ready) {
     return (
@@ -42,7 +42,7 @@ export default function VerificarTicket() {
     )
   }
 
-  // Se só tem 1 ticket, abre direto no detalhe
+  // 1 ticket → abre direto no detalhe
   if (tickets.length === 1 && !selectedId) {
     return (
       <TicketDetail
@@ -57,7 +57,7 @@ export default function VerificarTicket() {
     )
   }
 
-  // Abre detalhe do ticket selecionado na lista
+  // Ticket selecionado da lista
   if (selectedId) {
     const ticket = store.tickets.find(t => t.id === selectedId)
     if (ticket) {
@@ -98,28 +98,17 @@ export default function VerificarTicket() {
       )}
 
       <div className="verify-summary">
-        <div className="summary-card">
-          <span className="summary-num">{tickets.length}</span>
-          <span className="summary-label">Total</span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-num" style={{ color: '#60a5fa' }}>
-            {tickets.filter(t => t.status === 'open').length}
-          </span>
-          <span className="summary-label">Abertos</span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-num" style={{ color: '#fbbf24' }}>
-            {tickets.filter(t => t.status === 'in_progress').length}
-          </span>
-          <span className="summary-label">Em Progresso</span>
-        </div>
-        <div className="summary-card">
-          <span className="summary-num" style={{ color: '#4ade80' }}>
-            {tickets.filter(t => t.status === 'closed').length}
-          </span>
-          <span className="summary-label">Fechados</span>
-        </div>
+        {[
+          { label: 'Total', val: tickets.length, color: null },
+          { label: 'Abertos', val: tickets.filter(t => t.status === 'open').length, color: '#60a5fa' },
+          { label: 'Em Progresso', val: tickets.filter(t => t.status === 'in_progress').length, color: '#fbbf24' },
+          { label: 'Fechados', val: tickets.filter(t => t.status === 'closed').length, color: '#4ade80' },
+        ].map(s => (
+          <div key={s.label} className="summary-card">
+            <span className="summary-num" style={s.color ? { color: s.color } : {}}>{s.val}</span>
+            <span className="summary-label">{s.label}</span>
+          </div>
+        ))}
       </div>
 
       {tickets.length === 0 ? (
