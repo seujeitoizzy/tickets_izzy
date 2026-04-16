@@ -129,9 +129,7 @@ export function useStore() {
 
     if (error) { console.error('[fetchAgents]', error); return }
     setAgents(data.map(mapAgent))
-  }
-
-  // --- Tickets ---
+  }  // --- Tickets ---
   async function createTicket(data) {
     const { data: row, error } = await supabase
       .from('ast_tickets')
@@ -292,11 +290,18 @@ export function useStore() {
       .select()
       .single()
     if (error) { console.error('[addAgent]', error); return }
-    setAgents(prev => [...prev, mapAgent(data)].sort((a, b) => a.name.localeCompare(b.name)))
+    await fetchAgents()
   }
 
   async function bulkAddAgents(agentList) {
-    const existingNames = new Set(agents.map(a => a.name.toLowerCase()))
+    // Busca nomes já no banco para evitar duplicatas (não usa estado local que pode estar stale)
+    const { data: existing } = await supabase
+      .from('ast_agents')
+      .select('name')
+      .eq('active', true)
+
+    const existingNames = new Set((existing || []).map(a => a.name.toLowerCase()))
+
     const toInsert = agentList
       .filter(a => !existingNames.has(a.name.toLowerCase()))
       .map(a => ({
@@ -315,12 +320,8 @@ export function useStore() {
 
     if (error) { console.error('[bulkAddAgents]', error); return 0 }
 
-    // Atualiza estado imediatamente sem esperar Realtime
-    setAgents(prev => [
-      ...prev,
-      ...data.map(mapAgent)
-    ].sort((a, b) => a.name.localeCompare(b.name)))
-
+    // Faz fetch completo para garantir lista atualizada
+    await fetchAgents()
     return data.length
   }
 
