@@ -10,7 +10,6 @@ import NovoTicket from './pages/NovoTicket'
 import FecharTicket from './pages/FecharTicket'
 import VerificarTicket from './pages/VerificarTicket'
 import Relatorios from './pages/Relatorios'
-import DebugPanel from './components/DebugPanel'
 import './App.css'
 import './pages/PageLoading.css'
 
@@ -186,11 +185,9 @@ export default function App() {
   const location = useLocation()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [logs, setLogs] = useState([])
 
   const addLog = useCallback((msg) => {
     console.log(`[Chatwoot] ${msg}`)
-    setLogs(prev => [...prev, { time: new Date().toLocaleTimeString('pt-BR'), msg }])
   }, [])
 
   const { data: chatwoot } = useChatwoot(addLog)
@@ -220,7 +217,6 @@ export default function App() {
           />
         } />
       </Routes>
-      <DebugPanel logs={logs} />
     </Layout>
   )
 }

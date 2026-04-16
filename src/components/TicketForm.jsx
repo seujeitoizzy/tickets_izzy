@@ -1,7 +1,93 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import './TicketForm.css'
 import { PRIORITIES } from '../data/defaults'
 import Icon from './Icon'
+
+function AgentSelect({ agents, value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [manual, setManual] = useState(false)
+  const [manualVal, setManualVal] = useState('')
+  const ref = useRef()
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function initials(name) {
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  }
+
+  const selected = agents.find(a => a.name === value)
+
+  if (manual) {
+    return (
+      <div className="agent-select-manual">
+        <input
+          autoFocus
+          value={manualVal}
+          onChange={e => { setManualVal(e.target.value); onChange(e.target.value) }}
+          placeholder="Digite o nome do responsável"
+        />
+        <button type="button" className="agent-select-back" onClick={() => { setManual(false); onChange('') }}>
+          <Icon name="back" size={12} /> Lista
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="agent-select-wrap" ref={ref}>
+      <button type="button" className="agent-select-btn" onClick={() => setOpen(v => !v)}>
+        {selected ? (
+          <>
+            <span className="agent-select-avatar" style={{ background: selected.avatarColor }}>
+              {initials(selected.name)}
+            </span>
+            <span className="agent-select-name">{selected.name}</span>
+          </>
+        ) : (
+          <>
+            <span className="agent-select-placeholder">
+              <Icon name="user" size={14} style={{ color: '#475569' }} />
+              Selecionar responsável
+            </span>
+          </>
+        )}
+        <Icon name="back" size={12} style={{ color: '#475569', transform: open ? 'rotate(-90deg)' : 'rotate(90deg)', marginLeft: 'auto', transition: 'transform 0.15s' }} />
+      </button>
+
+      {open && (
+        <div className="agent-select-dropdown">
+          {agents.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              className={`agent-select-item ${value === a.name ? 'selected' : ''}`}
+              onClick={() => { onChange(a.name); setOpen(false) }}
+            >
+              <span className="agent-select-avatar" style={{ background: a.avatarColor }}>
+                {initials(a.name)}
+              </span>
+              <div className="agent-select-info">
+                <span>{a.name}</span>
+                {a.email && <span className="agent-select-email">{a.email}</span>}
+              </div>
+              {value === a.name && <Icon name="check" size={13} style={{ color: '#6366f1', marginLeft: 'auto' }} />}
+            </button>
+          ))}
+          <button type="button" className="agent-select-manual-btn" onClick={() => { setOpen(false); setManual(true) }}>
+            <Icon name="edit" size={13} />
+            Digitar manualmente
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const AVAILABLE_ICONS = [
   'alert', 'inbox', 'message', 'checkCircle', 'zap', 'tool', 
@@ -105,12 +191,11 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
           <div className="field">
             <label>Responsável</label>
             {agents.length > 0 ? (
-              <select name="assignee" value={form.assignee} onChange={handle}>
-                <option value="">— Selecionar responsável —</option>
-                {agents.map(a => (
-                  <option key={a.id} value={a.name}>{a.name}</option>
-                ))}
-              </select>
+              <AgentSelect
+                agents={agents}
+                value={form.assignee}
+                onChange={val => setForm(p => ({ ...p, assignee: val }))}
+              />
             ) : (
               <input name="assignee" value={form.assignee} onChange={handle} placeholder="Nome do responsável" />
             )}
