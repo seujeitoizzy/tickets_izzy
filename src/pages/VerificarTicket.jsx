@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store/useStore'
 import { useChatwoot } from '../hooks/useChatwoot'
 import { PRIORITIES, STATUSES } from '../data/defaults'
 import Icon from '../components/Icon'
@@ -15,9 +14,8 @@ function fmt(iso) {
   })
 }
 
-export default function VerificarTicket() {
+export default function VerificarTicket({ store }) {
   const navigate = useNavigate()
-  const store = useStore()
   const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [selectedId, setSelectedId] = useState(null)
 

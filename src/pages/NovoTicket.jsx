@@ -1,26 +1,23 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import TicketForm from '../components/TicketForm'
-import { useStore } from '../store/useStore'
 import { useChatwoot } from '../hooks/useChatwoot'
-import Icon from '../components/Icon'
 import './PageLoading.css'
 
-export default function NovoTicket() {
+export default function NovoTicket({ store }) {
   const navigate = useNavigate()
-  const store = useStore()
-  const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
+  const { data: chatwoot } = useChatwoot()
 
   function handleCreate(data) {
     store.createTicket(data)
     navigate('/')
   }
 
-  if (!ready) {
+  if (store.loading) {
     return (
       <div className="page-loading">
         <div className="loading-spinner" />
-        <p>Aguardando dados da conversa...</p>
+        <p>Carregando...</p>
       </div>
     )
   }

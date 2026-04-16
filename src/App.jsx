@@ -12,6 +12,7 @@ import NovoTicket from './pages/NovoTicket'
 import FecharTicket from './pages/FecharTicket'
 import VerificarTicket from './pages/VerificarTicket'
 import './App.css'
+import './pages/PageLoading.css'
 
 function Layout({ children, store, view, setView, filter, setFilter, search, setSearch, chatwoot }) {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.16</div>
+          <div className="sidebar-version">v1.0.20</div>
         </div>
       </aside>
 
@@ -100,6 +101,15 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
 function ListaTickets({ store, filter, search }) {
   const navigate = useNavigate()
   const [selectedId, setSelectedId] = useState(null)
+
+  if (store.loading) {
+    return (
+      <div className="page-loading">
+        <div className="loading-spinner" />
+        <p>Carregando tickets...</p>
+      </div>
+    )
+  }
 
   const filtered = store.tickets.filter(t => {
     const matchStatus = filter === 'all' || t.status === filter
@@ -155,9 +165,9 @@ export default function App() {
     <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} chatwoot={chatwoot}>
       <Routes>
         <Route path="/" element={<ListaTickets store={store} filter={filter} search={search} />} />
-        <Route path="/novo" element={<NovoTicket />} />
-        <Route path="/fechar" element={<FecharTicket />} />
-        <Route path="/verificar" element={<VerificarTicket />} />
+        <Route path="/novo" element={<NovoTicket store={store} />} />
+        <Route path="/fechar" element={<FecharTicket store={store} />} />
+        <Route path="/verificar" element={<VerificarTicket store={store} />} />
         <Route path="/settings" element={
           <Settings
             categories={store.categories}

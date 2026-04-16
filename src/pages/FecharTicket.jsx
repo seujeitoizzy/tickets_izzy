@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store/useStore'
 import { useChatwoot } from '../hooks/useChatwoot'
 import Icon from '../components/Icon'
 import './FecharTicket.css'
 import './PageLoading.css'
 
-export default function FecharTicket() {
+export default function FecharTicket({ store }) {
   const navigate = useNavigate()
-  const store = useStore()
   const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [resolved, setResolved] = useState(false)
   const [note, setNote] = useState('')
