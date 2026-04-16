@@ -283,3 +283,20 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+.agent-token-btn {
+  width: 100%;
+  background: #1e293b;
+  border: 1px dashed #334155;
+  border-radius: 6px;
+  color: #6366f1;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.agent-token-btn:hover { border-color: #6366f1; opacity: 1; }

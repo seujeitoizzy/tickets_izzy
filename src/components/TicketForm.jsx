@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react'
 import './TicketForm.css'
 import { PRIORITIES } from '../data/defaults'
 import Icon from './Icon'
+import { useChatwootAgents } from '../hooks/useChatwootAgents'
+import { saveToken } from '../lib/chatwootApi'
 
-function AgentSelect({ agents, value, onChange }) {
+function AgentSelect({ agents, value, onChange, loading = false }) {
   const [open, setOpen] = useState(false)
   const [manual, setManual] = useState(false)
   const [manualVal, setManualVal] = useState('')
@@ -41,8 +43,13 @@ function AgentSelect({ agents, value, onChange }) {
 
   return (
     <div className="agent-select-wrap" ref={ref}>
-      <button type="button" className="agent-select-btn" onClick={() => setOpen(v => !v)}>
-        {selected ? (
+      <button type="button" className="agent-select-btn" onClick={() => !loading && setOpen(v => !v)}>
+        {loading ? (
+          <span className="agent-select-placeholder">
+            <div style={{ width: 12, height: 12, border: '2px solid #334155', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+            Carregando agentes...
+          </span>
+        ) : selected ? (
           <>
             <span className="agent-select-avatar" style={{ background: selected.avatarColor }}>
               {initials(selected.name)}
@@ -94,7 +101,17 @@ const AVAILABLE_ICONS = [
   'star', 'bug', 'arrowUp', 'pin', 'phone', 'transfer'
 ]
 
-export default function TicketForm({ onSubmit, onCancel, categories, types, agents = [], initial = {}, chatwootInitial = null }) {
+export default function TicketForm({ onSubmit, onCancel, categories, types, agents: agentsProp = [], initial = {}, chatwootInitial = null }) {
+  const { agents: chatwootAgents, loading: agentsLoading, needToken, refresh } = useChatwootAgents()
+  const [tokenInput, setTokenInput] = useState('')
+  const [showTokenInput, setShowTokenInput] = useState(false)
+
+  // Mescla agentes do Chatwoot com os do banco (prop), sem duplicatas
+  const allAgents = React.useMemo(() => {
+    const names = new Set(chatwootAgents.map(a => a.name.toLowerCase()))
+    const extra = agentsProp.filter(a => !names.has(a.name.toLowerCase()))
+    return [...chatwootAgents, ...extra]
+  }, [chatwootAgents, agentsProp])
   const [form, setForm] = useState({
     title: initial.title || '',
     description: initial.description || '',
@@ -190,14 +207,41 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
 
           <div className="field">
             <label>Responsável</label>
-            {agents.length > 0 ? (
+            {needToken && !showTokenInput ? (
+              <button type="button" className="agent-token-btn" onClick={() => setShowTokenInput(true)}>
+                <Icon name="user" size={13} /> Configurar token para ver agentes
+              </button>
+            ) : showTokenInput ? (
+              <div className="agent-select-manual">
+                <input
+                  autoFocus
+                  type="password"
+                  value={tokenInput}
+                  onChange={e => setTokenInput(e.target.value)}
+                  placeholder="Cole o API Access Token do Chatwoot"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      saveToken(tokenInput)
+                      setShowTokenInput(false)
+                      refresh()
+                    }
+                  }}
+                />
+                <button type="button" className="agent-select-back" onClick={() => {
+                  saveToken(tokenInput)
+                  setShowTokenInput(false)
+                  refresh()
+                }}>
+                  <Icon name="check" size={12} />
+                </button>
+              </div>
+            ) : (
               <AgentSelect
-                agents={agents}
+                agents={allAgents}
                 value={form.assignee}
                 onChange={val => setForm(p => ({ ...p, assignee: val }))}
+                loading={agentsLoading}
               />
-            ) : (
-              <input name="assignee" value={form.assignee} onChange={handle} placeholder="Nome do responsável" />
             )}
           </div>
 
