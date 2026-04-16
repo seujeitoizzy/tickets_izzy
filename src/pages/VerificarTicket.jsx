@@ -1,20 +1,25 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { useChatwoot } from '../hooks/useChatwoot'
 import { PRIORITIES, STATUSES } from '../data/defaults'
 import Icon from '../components/Icon'
+import TicketDetail from '../components/TicketDetail'
 import './VerificarTicket.css'
 import './PageLoading.css'
 
 function fmt(iso) {
-  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export default function VerificarTicket() {
   const navigate = useNavigate()
   const store = useStore()
   const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
+  const [selectedId, setSelectedId] = useState(null)
 
   const tickets = store.tickets.filter(t =>
     (chatwoot?.conversationId && t.chatwootConversationId === `#${chatwoot.conversationId}`) ||
@@ -30,13 +35,31 @@ export default function VerificarTicket() {
     )
   }
 
+  // Abre detalhe do ticket selecionado
+  if (selectedId) {
+    const ticket = store.tickets.find(t => t.id === selectedId)
+    if (ticket) {
+      return (
+        <TicketDetail
+          ticket={ticket}
+          categories={store.categories}
+          types={store.types}
+          onBack={() => setSelectedId(null)}
+          onUpdate={(id, changes) => store.updateTicket(id, changes)}
+          onDelete={(id) => { store.deleteTicket(id); setSelectedId(null) }}
+          onAction={(id, action) => store.addAction(id, action)}
+        />
+      )
+    }
+  }
+
   return (
     <div className="page-wrap">
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate('/')}>
           <Icon name="back" size={14} /> Voltar
         </button>
-        <h2>Verificar Tickets</h2>
+        <h2>Tickets do Cliente</h2>
       </div>
 
       {chatwoot?.clientName && (
@@ -58,15 +81,21 @@ export default function VerificarTicket() {
           <span className="summary-label">Total</span>
         </div>
         <div className="summary-card">
-          <span className="summary-num" style={{ color: '#60a5fa' }}>{tickets.filter(t => t.status === 'open').length}</span>
+          <span className="summary-num" style={{ color: '#60a5fa' }}>
+            {tickets.filter(t => t.status === 'open').length}
+          </span>
           <span className="summary-label">Abertos</span>
         </div>
         <div className="summary-card">
-          <span className="summary-num" style={{ color: '#fbbf24' }}>{tickets.filter(t => t.status === 'in_progress').length}</span>
+          <span className="summary-num" style={{ color: '#fbbf24' }}>
+            {tickets.filter(t => t.status === 'in_progress').length}
+          </span>
           <span className="summary-label">Em Progresso</span>
         </div>
         <div className="summary-card">
-          <span className="summary-num" style={{ color: '#4ade80' }}>{tickets.filter(t => t.status === 'closed').length}</span>
+          <span className="summary-num" style={{ color: '#4ade80' }}>
+            {tickets.filter(t => t.status === 'closed').length}
+          </span>
           <span className="summary-label">Fechados</span>
         </div>
       </div>
@@ -86,7 +115,7 @@ export default function VerificarTicket() {
             const priority = PRIORITIES.find(p => p.id === ticket.priority)
             const cat = store.categories.find(c => c.id === ticket.categoryId)
             return (
-              <div key={ticket.id} className="verify-card" onClick={() => navigate('/')}>
+              <div key={ticket.id} className="verify-card" onClick={() => setSelectedId(ticket.id)}>
                 <div className="vc-top">
                   <span className="vc-title">{ticket.title}</span>
                   <span className="vc-status" style={{ color: status?.color, borderColor: status?.color + '44', background: status?.color + '12' }}>
