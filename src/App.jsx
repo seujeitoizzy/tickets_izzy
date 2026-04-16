@@ -90,6 +90,7 @@ export default function App() {
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
+          <div className="sidebar-version">v1.0.0-beta</div>
         </div>
       </aside>
 
