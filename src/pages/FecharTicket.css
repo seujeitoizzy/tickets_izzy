@@ -1,0 +1,133 @@
+.page-wrap {
+  max-width: 600px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  font-size: 18px;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.back-btn {
+  background: none;
+  color: #6366f1;
+  font-size: 13px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.client-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 20px;
+}
+
+.conv-id {
+  background: #334155;
+  color: #64748b;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.success-box, .empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.ticket-close-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ticket-close-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tcc-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.tcc-desc {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.tcc-note label {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.btn-resolve {
+  background: #166534;
+  color: #4ade80;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+}
+
+.btn-primary {
+  background: #6366f1;
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-secondary {
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { STATUSES } from './data/defaults'
 import TicketForm from './components/TicketForm'
@@ -6,67 +7,21 @@ import TicketList from './components/TicketList'
 import TicketDetail from './components/TicketDetail'
 import Settings from './components/Settings'
 import Icon from './components/Icon'
-import DebugPanel from './components/DebugPanel'
 import { useChatwoot } from './hooks/useChatwoot'
+import NovoTicket from './pages/NovoTicket'
+import FecharTicket from './pages/FecharTicket'
+import VerificarTicket from './pages/VerificarTicket'
 import './App.css'
 
-export default function App() {
-  const store = useStore()
-  const [logs, setLogs] = useState([])
-
-  const addLog = useCallback((msg) => {
-    const time = new Date().toLocaleTimeString('pt-BR')
-    setLogs(prev => [...prev, { time, msg }])
-    console.log(`[Chatwoot Debug] ${msg}`)
-  }, [])
-
-  const chatwoot = useChatwoot(addLog)
-
-  // Quando receber dados do Chatwoot, abre direto no formulário
-  const prevChatwootRef = useRef(null)
-  useEffect(() => {
-    if (chatwoot && chatwoot.conversationId && prevChatwootRef.current !== chatwoot.conversationId) {
-      prevChatwootRef.current = chatwoot.conversationId
-      addLog(`[APP] Dados recebidos, abrindo formulário automaticamente`)
-      setView('new')
-    }
-  }, [chatwoot])
-  const [view, setView] = useState('list')
-  const [selectedId, setSelectedId] = useState(null)
-  const [filter, setFilter] = useState('all')
-  const [search, setSearch] = useState('')
-
-  const selectedTicket = store.tickets.find(t => t.id === selectedId)
-
-  // Quando chegar dados do Chatwoot e estiver na lista, mostra banner
-  const hasChatwootData = !!(chatwoot?.clientName || chatwoot?.conversationId)
-
-  function handleCreate(data) {
-    store.createTicket(data)
-    setView('list')
-  }
-
-  function openDetail(ticket) {
-    setSelectedId(ticket.id)
-    setView('detail')
-  }
-
-  function openNewWithChatwoot() {
-    setView('new')
-  }
-
-  const filtered = store.tickets.filter(t => {
-    const matchStatus = filter === 'all' || t.status === filter
-    const q = search.toLowerCase()
-    const matchSearch = !q ||
-      t.title?.toLowerCase().includes(q) ||
-      t.clientName?.toLowerCase().includes(q) ||
-      t.assignee?.toLowerCase().includes(q)
-    return matchStatus && matchSearch
-  })
+function Layout({ children, store, view, setView, filter, setFilter, search, setSearch, chatwoot }) {
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const counts = { all: store.tickets.length }
   STATUSES.forEach(s => { counts[s.id] = store.tickets.filter(t => t.status === s.id).length })
+
+  const isSettings = location.pathname === '/settings'
+  const isList = location.pathname === '/'
 
   return (
     <div className="app">
@@ -78,8 +33,8 @@ export default function App() {
 
         <nav className="sidebar-nav">
           <button
-            className={`nav-item ${view !== 'settings' && filter === 'all' ? 'active' : ''}`}
-            onClick={() => { setFilter('all'); setView('list') }}
+            className={`nav-item ${isList && filter === 'all' ? 'active' : ''}`}
+            onClick={() => { setFilter('all'); navigate('/') }}
           >
             <Icon name="all" size={15} />
             <span>Todos os tickets</span>
@@ -91,8 +46,8 @@ export default function App() {
           {STATUSES.map(s => (
             <button
               key={s.id}
-              className={`nav-item ${view === 'list' && filter === s.id ? 'active' : ''}`}
-              onClick={() => { setFilter(s.id); setView('list') }}
+              className={`nav-item ${isList && filter === s.id ? 'active' : ''}`}
+              onClick={() => { setFilter(s.id); navigate('/') }}
             >
               <span className="nav-dot" style={{ background: s.color }} />
               {s.label}
@@ -103,19 +58,19 @@ export default function App() {
 
         <div className="sidebar-bottom">
           <button
-            className={`nav-item ${view === 'settings' ? 'active' : ''}`}
-            onClick={() => setView('settings')}
+            className={`nav-item ${isSettings ? 'active' : ''}`}
+            onClick={() => navigate('/settings')}
           >
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.5</div>
+          <div className="sidebar-version">v1.0.10</div>
         </div>
       </aside>
 
       <div className="content">
         <header className="topbar">
-          {view === 'list' && (
+          {isList && (
             <div className="search-wrap">
               <Icon name="search" size={14} className="search-icon" />
               <input
@@ -126,8 +81,8 @@ export default function App() {
               />
             </div>
           )}
-          {view !== 'settings' && view !== 'new' && (
-            <button className="btn-primary" onClick={() => setView('new')}>
+          {!isSettings && location.pathname !== '/novo' && (
+            <button className="btn-primary" onClick={() => navigate('/novo')}>
               <Icon name="plus" size={14} />
               Novo Ticket
             </button>
@@ -135,71 +90,97 @@ export default function App() {
         </header>
 
         <main className="main">
-          {/* Banner Chatwoot - aparece quando há dados da conversa ativa */}
-          {hasChatwootData && view === 'list' && (
-            <div className="chatwoot-banner">
-              <div className="chatwoot-banner-info">
-                <Icon name="user" size={14} />
-                <span>Conversa ativa:</span>
-                <strong>{chatwoot.clientName || 'Cliente'}</strong>
-                {chatwoot.conversationLabel && (
-                  <span className="banner-conv-id">{chatwoot.conversationLabel}</span>
-                )}
-                {chatwoot.agentName && (
-                  <span className="banner-agent">Agente: {chatwoot.agentName}</span>
-                )}
-              </div>
-              <button className="banner-btn" onClick={openNewWithChatwoot}>
-                <Icon name="plus" size={13} />
-                Abrir ticket para esta conversa
-              </button>
-            </div>
-          )}
-
-          {view === 'new' && (
-            <TicketForm
-              categories={store.categories}
-              types={store.types}
-              chatwootInitial={chatwoot}
-              onSubmit={handleCreate}
-              onCancel={() => setView('list')}
-            />
-          )}
-
-          {view === 'detail' && selectedTicket && (
-            <TicketDetail
-              ticket={selectedTicket}
-              categories={store.categories}
-              types={store.types}
-              onBack={() => setView('list')}
-              onUpdate={(id, changes) => store.updateTicket(id, changes)}
-              onDelete={(id) => { store.deleteTicket(id); setView('list') }}
-              onAction={(id, action) => store.addAction(id, action)}
-            />
-          )}
-
-          {view === 'list' && (
-            <TicketList
-              tickets={filtered}
-              categories={store.categories}
-              types={store.types}
-              onSelect={openDetail}
-            />
-          )}
-
-          {view === 'settings' && (
-            <Settings
-              categories={store.categories}
-              types={store.types}
-              onAddCategory={store.addCategory}
-              onRemoveCategory={store.removeCategory}
-              onAddType={store.addType}
-              onRemoveType={store.removeType}
-            />
-          )}
+          {children}
         </main>
       </div>
-      <DebugPanel logs={logs} />
     </div>
+  )
+}
+
+function ListaTickets({ store, filter, search }) {
+  const navigate = useNavigate()
+  const [selectedId, setSelectedId] = useState(null)
+
+  const filtered = store.tickets.filter(t => {
+    const matchStatus = filter === 'all' || t.status === filter
+    const q = search.toLowerCase()
+    const matchSearch = !q ||
+      t.title?.toLowerCase().includes(q) ||
+      t.clientName?.toLowerCase().includes(q) ||
+      t.assignee?.toLowerCase().includes(q)
+    return matchStatus && matchSearch
+  })
+
+  if (selectedId) {
+    const ticket = store.tickets.find(t => t.id === selectedId)
+    if (ticket) {
+      return (
+        <TicketDetail
+          ticket={ticket}
+          categories={store.categories}
+          types={store.types}
+          onBack={() => setSelectedId(null)}
+          onUpdate={(id, changes) => store.updateTicket(id, changes)}
+          onDelete={(id) => { store.deleteTicket(id); setSelectedId(null) }}
+          onAction={(id, action) => store.addAction(id, action)}
+        />
+      )
+    }
+  }
+
+  return (
+    <TicketList
+      tickets={filtered}
+      categories={store.categories}
+      types={store.types}
+      onSelect={t => setSelectedId(t.id)}
+    />
+  )
+}
+
+export default function App() {
+  const store = useStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+
+  const addLog = useCallback((msg) => {
+    console.log(`[Chatwoot] ${msg}`)
+  }, [])
+
+  const chatwoot = useChatwoot(addLog)
+
+  // Quando receber dados do Chatwoot, abre direto no formulário
+  const prevConvRef = useRef(null)
+  useEffect(() => {
+    if (chatwoot?.conversationId && prevConvRef.current !== chatwoot.conversationId) {
+      prevConvRef.current = chatwoot.conversationId
+      // Só redireciona se estiver na raiz
+      if (location.pathname === '/') {
+        navigate('/novo')
+      }
+    }
+  }, [chatwoot])
+
+  return (
+    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} chatwoot={chatwoot}>
+      <Routes>
+        <Route path="/" element={<ListaTickets store={store} filter={filter} search={search} />} />
+        <Route path="/novo" element={<NovoTicket />} />
+        <Route path="/fechar" element={<FecharTicket />} />
+        <Route path="/verificar" element={<VerificarTicket />} />
+        <Route path="/settings" element={
+          <Settings
+            categories={store.categories}
+            types={store.types}
+            onAddCategory={store.addCategory}
+            onRemoveCategory={store.removeCategory}
+            onAddType={store.addType}
+            onRemoveType={store.removeType}
+          />
+        } />
+      </Routes>
+    </Layout>
   )
 }
