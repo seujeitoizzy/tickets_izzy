@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { STATUSES } from './data/defaults'
@@ -64,7 +64,7 @@ function Layout({ children, store, view, setView, filter, setFilter, search, set
             <Icon name="settings" size={15} />
             <span>Configurações</span>
           </button>
-          <div className="sidebar-version">v1.0.11</div>
+          <div className="sidebar-version">v1.0.12</div>
         </div>
       </aside>
 
@@ -150,18 +150,6 @@ export default function App() {
   }, [])
 
   const { data: chatwoot } = useChatwoot(addLog)
-
-  // Quando receber dados do Chatwoot, abre direto no formulário
-  const prevConvRef = useRef(null)
-  useEffect(() => {
-    if (chatwoot?.conversationId && prevConvRef.current !== chatwoot.conversationId) {
-      prevConvRef.current = chatwoot.conversationId
-      addLog(`[APP] Dados recebidos, abrindo formulário automaticamente`)
-      if (location.pathname === '/') {
-        navigate('/novo')
-      }
-    }
-  }, [chatwoot])
 
   return (
     <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} chatwoot={chatwoot}>
