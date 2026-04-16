@@ -60,12 +60,13 @@ export function useChatwoot(addLog) {
       const msg = event.data
       addLog?.(`[MSG] origin="${event.origin}" type="${msg?.type}" payload=${JSON.stringify(msg).slice(0, 300)}`)
 
-      if (!msg || msg.type !== 'appContext') {
-        addLog?.(`[MSG] Ignorado — type esperado: "appContext", recebido: "${msg?.type}"`)
+      // Chatwoot usa msg.event, não msg.type
+      if (!msg || msg.event !== 'appContext') {
+        addLog?.(`[MSG] Ignorado — event esperado: "appContext", recebido: "${msg?.event}"`)
         return
       }
 
-      const payload = msg.payload || msg.data || msg
+      const payload = msg.data || msg.payload || msg
       addLog?.(`[PARSE] payload=${JSON.stringify(payload).slice(0, 300)}`)
 
       const ctx = parseContext(payload)
