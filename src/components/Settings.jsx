@@ -177,20 +177,28 @@ function AgentManager({ agents, onAdd, onBulkAdd, onRemove }) {
     setImportMsg(null)
     setNeedToken(false)
     try {
+      console.log('[SYNC] Buscando agentes do Chatwoot...')
       const data = await fetchChatwootAgents()
+      console.log('[SYNC] Agentes recebidos do Chatwoot:', data.length, data.map(a => a.name))
+
       const toAdd = data.map(a => ({
         name: a.name,
         email: a.email || '',
         phone: '',
         avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)],
       }))
+
+      console.log('[SYNC] Chamando onBulkAdd com:', toAdd.length, 'agentes')
       const added = await onBulkAdd(toAdd)
+      console.log('[SYNC] Resultado do onBulkAdd:', added)
+
       setImportMsg(
         added === 0
           ? { text: 'Todos os agentes já estão cadastrados.', type: 'error' }
           : { text: `${added} agente(s) importado(s)!`, type: 'success' }
       )
     } catch (e) {
+      console.error('[SYNC] Erro:', e.message)
       if (e.message === 'TOKEN_NEEDED') setNeedToken(true)
       else setImportMsg({ text: e.message, type: 'error' })
     }

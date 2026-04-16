@@ -294,11 +294,15 @@ export function useStore() {
   }
 
   async function bulkAddAgents(agentList) {
-    // Busca nomes já no banco para evitar duplicatas (não usa estado local que pode estar stale)
-    const { data: existing } = await supabase
+    console.log('[BULK] Iniciando com', agentList.length, 'agentes')
+
+    const { data: existing, error: fetchError } = await supabase
       .from('ast_agents')
       .select('name')
       .eq('active', true)
+
+    if (fetchError) { console.error('[BULK] Erro ao buscar existentes:', fetchError); return 0 }
+    console.log('[BULK] Existentes no banco:', existing?.length, existing?.map(a => a.name))
 
     const existingNames = new Set((existing || []).map(a => a.name.toLowerCase()))
 
@@ -311,6 +315,8 @@ export function useStore() {
         avatar_color: a.avatarColor || '#6366f1',
       }))
 
+    console.log('[BULK] Para inserir:', toInsert.length, toInsert.map(a => a.name))
+
     if (toInsert.length === 0) return 0
 
     const { data, error } = await supabase
@@ -318,9 +324,9 @@ export function useStore() {
       .insert(toInsert)
       .select()
 
-    if (error) { console.error('[bulkAddAgents]', error); return 0 }
+    if (error) { console.error('[BULK] Erro no insert:', error.code, error.message, error.hint); return 0 }
 
-    // Faz fetch completo para garantir lista atualizada
+    console.log('[BULK] Inseridos com sucesso:', data?.length)
     await fetchAgents()
     return data.length
   }
