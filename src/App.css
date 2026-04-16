@@ -169,3 +169,56 @@
   color: #334155;
   padding: 10px 10px 4px;
 }
+
+/* Chatwoot banner */
+.chatwoot-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e293b;
+  border: 1px solid #6366f144;
+  border-left: 3px solid #6366f1;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chatwoot-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.chatwoot-banner-info strong {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.banner-conv-id {
+  background: #334155;
+  color: #64748b;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.banner-btn {
+  background: #6366f1;
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.banner-btn:hover { opacity: 0.85; }

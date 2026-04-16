@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useStore } from './store/useStore'
 import { STATUSES } from './data/defaults'
 import TicketForm from './components/TicketForm'
@@ -6,16 +6,21 @@ import TicketList from './components/TicketList'
 import TicketDetail from './components/TicketDetail'
 import Settings from './components/Settings'
 import Icon from './components/Icon'
+import { useChatwoot } from './hooks/useChatwoot'
 import './App.css'
 
 export default function App() {
   const store = useStore()
+  const chatwoot = useChatwoot()
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
   const selectedTicket = store.tickets.find(t => t.id === selectedId)
+
+  // Quando chegar dados do Chatwoot e estiver na lista, mostra banner
+  const hasChatwootData = !!(chatwoot?.clientName || chatwoot?.conversationId)
 
   function handleCreate(data) {
     store.createTicket(data)
@@ -25,6 +30,10 @@ export default function App() {
   function openDetail(ticket) {
     setSelectedId(ticket.id)
     setView('detail')
+  }
+
+  function openNewWithChatwoot() {
+    setView('new')
   }
 
   const filtered = store.tickets.filter(t => {
@@ -106,10 +115,29 @@ export default function App() {
         </header>
 
         <main className="main">
+          {/* Banner Chatwoot - aparece quando há dados da conversa ativa */}
+          {hasChatwootData && view === 'list' && (
+            <div className="chatwoot-banner">
+              <div className="chatwoot-banner-info">
+                <Icon name="user" size={14} />
+                <span>Conversa ativa:</span>
+                <strong>{chatwoot.clientName}</strong>
+                {chatwoot.conversationId && (
+                  <span className="banner-conv-id">{chatwoot.conversationId}</span>
+                )}
+              </div>
+              <button className="banner-btn" onClick={openNewWithChatwoot}>
+                <Icon name="plus" size={13} />
+                Abrir ticket para esta conversa
+              </button>
+            </div>
+          )}
+
           {view === 'new' && (
             <TicketForm
               categories={store.categories}
               types={store.types}
+              chatwootInitial={chatwoot}
               onSubmit={handleCreate}
               onCancel={() => setView('list')}
             />

@@ -8,7 +8,7 @@ const AVAILABLE_ICONS = [
   'star', 'bug', 'arrowUp', 'pin', 'phone', 'transfer'
 ]
 
-export default function TicketForm({ onSubmit, onCancel, categories, types, initial = {} }) {
+export default function TicketForm({ onSubmit, onCancel, categories, types, initial = {}, chatwootInitial = null }) {
   const [form, setForm] = useState({
     title: initial.title || '',
     description: initial.description || '',
@@ -16,9 +16,9 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, init
     categoryId: initial.categoryId || (categories[0]?.id || ''),
     typeId: initial.typeId || (types[0]?.id || ''),
     assignee: initial.assignee || '',
-    clientName: initial.clientName || '',
-    chatwootLink: initial.chatwootLink || '',
-    chatwootConversationId: initial.chatwootConversationId || '',
+    clientName: initial.clientName || chatwootInitial?.clientName || '',
+    chatwootLink: initial.chatwootLink || chatwootInitial?.chatwootLink || '',
+    chatwootConversationId: initial.chatwootConversationId || chatwootInitial?.conversationId || '',
   })
 
   function handle(e) {
