@@ -213,6 +213,7 @@ export default function App() {
             onAddStatus={store.addStatus}
             onRemoveStatus={store.removeStatus}
             onAddAgent={store.addAgent}
+            onBulkAddAgents={store.bulkAddAgents}
             onRemoveAgent={store.removeAgent}
           />
         } />

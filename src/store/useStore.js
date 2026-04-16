@@ -71,9 +71,10 @@ export function useStore() {
     fetchAll()
 
     const ticketSub = supabase
-      .channel('ast_tickets_changes')
+      .channel('ast_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_tickets' }, () => fetchTickets())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_ticket_timeline' }, () => fetchTickets())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ast_agents' }, () => fetchAgents())
       .subscribe()
 
     return () => { supabase.removeChannel(ticketSub) }
@@ -285,11 +286,42 @@ export function useStore() {
   }
 
   async function addAgent(agent) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('ast_agents')
       .insert({ name: agent.name, email: agent.email || null, phone: agent.phone || null, avatar_color: agent.avatarColor || '#6366f1' })
+      .select()
+      .single()
     if (error) { console.error('[addAgent]', error); return }
-    await fetchAgents()
+    setAgents(prev => [...prev, mapAgent(data)].sort((a, b) => a.name.localeCompare(b.name)))
+  }
+
+  async function bulkAddAgents(agentList) {
+    const existingNames = new Set(agents.map(a => a.name.toLowerCase()))
+    const toInsert = agentList
+      .filter(a => !existingNames.has(a.name.toLowerCase()))
+      .map(a => ({
+        name: a.name,
+        email: a.email || null,
+        phone: a.phone || null,
+        avatar_color: a.avatarColor || '#6366f1',
+      }))
+
+    if (toInsert.length === 0) return 0
+
+    const { data, error } = await supabase
+      .from('ast_agents')
+      .insert(toInsert)
+      .select()
+
+    if (error) { console.error('[bulkAddAgents]', error); return 0 }
+
+    // Atualiza estado imediatamente sem esperar Realtime
+    setAgents(prev => [
+      ...prev,
+      ...data.map(mapAgent)
+    ].sort((a, b) => a.name.localeCompare(b.name)))
+
+    return data.length
   }
 
   async function removeAgent(id) {
@@ -303,6 +335,6 @@ export function useStore() {
     tickets, categories, types, statuses, agents, loading,
     createTicket, updateTicket, deleteTicket, addAction,
     addCategory, removeCategory, addType, removeType,
-    addStatus, removeStatus, addAgent, removeAgent,
+    addStatus, removeStatus, addAgent, bulkAddAgents, removeAgent,
   }
 }

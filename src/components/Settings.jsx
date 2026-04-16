@@ -163,7 +163,7 @@ function StatusManager({ statuses, onAdd, onRemove }) {
   )
 }
 
-function AgentManager({ agents, onAdd, onRemove }) {
+function AgentManager({ agents, onAdd, onBulkAdd, onRemove }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', avatarColor: COLORS[5] })
   const [showPicker, setShowPicker] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -178,15 +178,18 @@ function AgentManager({ agents, onAdd, onRemove }) {
     setNeedToken(false)
     try {
       const data = await fetchChatwootAgents()
-      const existingNames = new Set(agents.map(a => a.name.toLowerCase()))
-      let added = 0
-      for (const agent of data) {
-        if (!existingNames.has(agent.name.toLowerCase())) {
-          await onAdd({ name: agent.name, email: agent.email || '', phone: '', avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)] })
-          added++
-        }
-      }
-      setImportMsg(added === 0 ? { text: 'Todos os agentes ja estao cadastrados.', type: 'error' } : { text: `${added} agente(s) importado(s)!`, type: 'success' })
+      const toAdd = data.map(a => ({
+        name: a.name,
+        email: a.email || '',
+        phone: '',
+        avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+      }))
+      const added = await onBulkAdd(toAdd)
+      setImportMsg(
+        added === 0
+          ? { text: 'Todos os agentes já estão cadastrados.', type: 'error' }
+          : { text: `${added} agente(s) importado(s)!`, type: 'success' }
+      )
     } catch (e) {
       if (e.message === 'TOKEN_NEEDED') setNeedToken(true)
       else setImportMsg({ text: e.message, type: 'error' })
@@ -279,7 +282,7 @@ function AgentManager({ agents, onAdd, onRemove }) {
   )
 }
 
-export default function Settings({ categories, types, statuses, agents, onAddCategory, onRemoveCategory, onAddType, onRemoveType, onAddStatus, onRemoveStatus, onAddAgent, onRemoveAgent }) {
+export default function Settings({ categories, types, statuses, agents, onAddCategory, onRemoveCategory, onAddType, onRemoveType, onAddStatus, onRemoveStatus, onAddAgent, onBulkAddAgents, onRemoveAgent }) {
   return (
     <div className="settings-wrap">
       <h2>Configurações</h2>
@@ -287,7 +290,7 @@ export default function Settings({ categories, types, statuses, agents, onAddCat
         <CategoryManager categories={categories} onAdd={onAddCategory} onRemove={onRemoveCategory} />
         <TypeManager types={types} onAdd={onAddType} onRemove={onRemoveType} />
         <StatusManager statuses={statuses} onAdd={onAddStatus} onRemove={onRemoveStatus} />
-        <AgentManager agents={agents} onAdd={onAddAgent} onRemove={onRemoveAgent} />
+        <AgentManager agents={agents} onAdd={onAddAgent} onBulkAdd={onBulkAddAgents} onRemove={onRemoveAgent} />
       </div>
     </div>
   )
