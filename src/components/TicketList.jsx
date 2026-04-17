@@ -29,6 +29,14 @@ function DeadlineCell({ ticket }) {
   )
 }
 
+// Fallback para status com id fixo (legado)
+const LEGACY_STATUS = {
+  open:        { label: 'Aberto',       color: '#60a5fa' },
+  in_progress: { label: 'Em Progresso', color: '#fbbf24' },
+  waiting:     { label: 'Aguardando',   color: '#a78bfa' },
+  closed:      { label: 'Fechado',      color: '#4ade80' },
+}
+
 export default function TicketList({ tickets, categories, types, statuses = [], onSelect }) {
   if (tickets.length === 0) {
     return (
@@ -60,7 +68,7 @@ export default function TicketList({ tickets, categories, types, statuses = [], 
             const cat = categories.find(c => c.id === ticket.categoryId)
             const type = types.find(t => t.id === ticket.typeId)
             const priority = PRIORITIES.find(p => p.id === ticket.priority)
-            const status = statuses.find(s => s.id === ticket.status)
+            const status = statuses.find(s => s.id === ticket.status) || LEGACY_STATUS[ticket.status]
             const ticketNum = `#${String(idx + 1).padStart(4, '0')}`
 
             return (

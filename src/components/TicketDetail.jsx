@@ -34,7 +34,7 @@ function DeadlineBadge({ deadline }) {
 
 function TimelineEntry({ entry, statuses = [] }) {
   if (entry.type === 'status_change') {
-    const status = statuses.find(s => s.id === entry.status)
+    const status = statuses.find(s => s.id === entry.status) || LEGACY_STATUS[entry.status] || { color: '#6366f1' }
     return (
       <div className="tl-entry tl-status">
         <div className="tl-dot tl-dot-status" style={{ borderColor: status?.color, background: status?.color + '22' }}>
@@ -66,6 +66,13 @@ function TimelineEntry({ entry, statuses = [] }) {
   )
 }
 
+const LEGACY_STATUS = {
+  open:        { id: 'open',        label: 'Aberto',       color: '#60a5fa' },
+  in_progress: { id: 'in_progress', label: 'Em Progresso', color: '#fbbf24' },
+  waiting:     { id: 'waiting',     label: 'Aguardando',   color: '#a78bfa' },
+  closed:      { id: 'closed',      label: 'Fechado',      color: '#4ade80' },
+}
+
 export default function TicketDetail({ ticket, categories, types, statuses = [], onBack, onUpdate, onDelete, onAction, onAddChecklist, onToggleChecklist, onRemoveChecklist, onAddComment, onRemoveComment, onAddAttachment, onRemoveAttachment }) {
   const [tab, setTab] = useState('overview') // overview | comments | attachments | timeline
   const [editing, setEditing] = useState(false)
@@ -88,7 +95,7 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
   const cat = categories.find(c => c.id === ticket.categoryId)
   const type = types.find(t => t.id === ticket.typeId)
   const priority = PRIORITIES.find(p => p.id === ticket.priority)
-  const status = statuses.find(s => s.id === ticket.status)
+  const status = statuses.find(s => s.id === ticket.status) || LEGACY_STATUS[ticket.status]
 
   function submitAction(e) {
     e.preventDefault()
