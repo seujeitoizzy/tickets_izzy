@@ -69,7 +69,9 @@ export default function TicketList({ tickets, categories, types, statuses = [], 
             const type = types.find(t => t.id === ticket.typeId)
             const priority = PRIORITIES.find(p => p.id === ticket.priority)
             const status = statuses.find(s => s.id === ticket.status) || LEGACY_STATUS[ticket.status]
-            const ticketNum = `#${String(idx + 1).padStart(4, '0')}`
+            const ticketNum = ticket.ticketNumber
+              ? `#${String(ticket.ticketNumber).padStart(4, '0')}`
+              : `#${String(idx + 1).padStart(4, '0')}`
 
             return (
               <tr key={ticket.id} className="ticket-row" onClick={() => onSelect(ticket)}>

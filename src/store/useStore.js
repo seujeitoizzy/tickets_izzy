@@ -6,6 +6,7 @@ import { DEFAULT_CATEGORIES, DEFAULT_TYPES, DEFAULT_STATUSES, DEFAULT_AGENTS } f
 function mapTicket(row) {
   return {
     id: row.id,
+    ticketNumber: row.ticket_number,
     title: row.title,
     description: row.description,
     status: row.status,

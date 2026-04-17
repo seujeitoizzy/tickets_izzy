@@ -297,7 +297,9 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
     const matchSearch = !q ||
       t.title?.toLowerCase().includes(q) ||
       t.clientName?.toLowerCase().includes(q) ||
-      t.assignee?.toLowerCase().includes(q)
+      t.assignee?.toLowerCase().includes(q) ||
+      (t.ticketNumber && `#${String(t.ticketNumber).padStart(4, '0')}`.includes(q)) ||
+      (t.ticketNumber && String(t.ticketNumber).includes(q.replace('#', '')))
 
     let matchFilter = true
     if (filter === '__critical') matchFilter = t.priority === 'critical' && t.status !== 'closed'

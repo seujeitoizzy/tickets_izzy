@@ -12,6 +12,29 @@ function fmt(iso) {
   })
 }
 
+function CopyBadge({ value }) {
+  const [copied, setCopied] = useState(false)
+
+  function copy() {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <button className={`copy-badge ${copied ? 'copied' : ''}`} onClick={copy} title="Copiar ID">
+      <span className="copy-badge-num">{value}</span>
+      <span className="copy-badge-icon">
+        {copied
+          ? <Icon name="check" size={11} />
+          : <Icon name="fileEdit" size={11} />
+        }
+      </span>
+    </button>
+  )
+}
+
 function DeadlineBadge({ deadline }) {
   const now = new Date()
   const d = new Date(deadline)
@@ -186,7 +209,12 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
         {/* LEFT */}
         <div className="detail-main">
           <div className="detail-card">
-            <h1 className="detail-title">{ticket.title}</h1>
+            <h1 className="detail-title">
+              {ticket.ticketNumber && (
+                <CopyBadge value={`#${String(ticket.ticketNumber).padStart(4, '0')}`} />
+              )}
+              {ticket.title}
+            </h1>
 
             {(ticket.clientName || ticket.chatwootLink) && (
               <div className="chatwoot-block">

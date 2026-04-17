@@ -1075,3 +1075,66 @@
   width: fit-content;
   white-space: nowrap;
 }
+
+.detail-ticket-num {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 1px 8px;
+  border-radius: 6px;
+  margin-right: 10px;
+  vertical-align: middle;
+  letter-spacing: 0.05em;
+}
+
+/* Copy badge */
+.copy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 2px 8px 2px 8px;
+  cursor: pointer;
+  margin-right: 10px;
+  vertical-align: middle;
+  transition: all 0.15s;
+  color: #475569;
+}
+
+.copy-badge:hover {
+  border-color: #6366f1;
+  color: #a5b4fc;
+  opacity: 1;
+}
+
+.copy-badge.copied {
+  border-color: #22c55e;
+  color: #4ade80;
+  background: #16653415;
+}
+
+.copy-badge-num {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.copy-badge.copied .copy-badge-num {
+  color: #4ade80;
+}
+
+.copy-badge-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+}
+
+.copy-badge:hover .copy-badge-icon {
+  opacity: 1;
+}
