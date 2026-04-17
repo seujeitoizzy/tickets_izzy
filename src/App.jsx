@@ -10,6 +10,8 @@ import NovoTicket from './pages/NovoTicket'
 import FecharTicket from './pages/FecharTicket'
 import VerificarTicket from './pages/VerificarTicket'
 import Relatorios from './pages/Relatorios'
+import { exportTableToPdf, exportElementToPdf } from './lib/exportPdf'
+import { useSetting } from './hooks/useSettings'
 import './App.css'
 import './pages/PageLoading.css'
 
@@ -29,7 +31,7 @@ function NavGroup({ label, icon, children, defaultOpen = false }) {
   )
 }
 
-function Layout({ children, store, filter, setFilter, search, setSearch }) {
+function Layout({ children, store, filter, setFilter, search, setSearch, onExport }) {
   const navigate = useNavigate()
   const location = useLocation()
   const isSettings = location.pathname === '/settings'
@@ -114,10 +116,18 @@ function Layout({ children, store, filter, setFilter, search, setSearch }) {
             </div>
           )}
           {location.pathname !== '/novo' && (
-            <button className="btn-primary" onClick={() => navigate('/novo')}>
-              <Icon name="plus" size={14} />
-              Novo Ticket
-            </button>
+            <div className="topbar-actions">
+              {isList && onExport && (
+                <button className="btn-export-top" onClick={onExport}>
+                  <Icon name="fileEdit" size={13} />
+                  Exportar PDF
+                </button>
+              )}
+              <button className="btn-primary" onClick={() => navigate('/novo')}>
+                <Icon name="plus" size={14} />
+                Novo Ticket
+              </button>
+            </div>
           )}
         </header>
 
@@ -129,90 +139,107 @@ function Layout({ children, store, filter, setFilter, search, setSearch }) {
   )
 }
 
-function SummaryCards({ tickets, statuses }) {
+function SummaryCards({ tickets, statuses, visibleCards, onToggleCard }) {
   const total = tickets.length
   const byStatus = {}
   statuses.forEach(s => { byStatus[s.id] = tickets.filter(t => t.status === s.id).length })
   const critical = tickets.filter(t => t.priority === 'critical' && t.status !== 'closed').length
   const overdue = tickets.filter(t => t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) < new Date() && t.status !== 'closed').length
-
-  // Ícone por status baseado na posição/ordem
   const statusIcons = ['inbox', 'zap', 'message', 'checkCircle', 'arrowUp', 'star']
 
+  const allCards = [
+    { id: 'total', label: 'Total de Chamados' },
+    ...statuses.map(s => ({ id: `status_${s.id}`, label: s.label })),
+    { id: 'critical', label: 'Críticos Abertos' },
+    { id: 'overdue', label: 'Prazo Vencido' },
+  ]
+
+  const show = (id) => !visibleCards || visibleCards.includes(id)
+
   return (
-    <div className="summary-cards">
-      {/* Total */}
-      <div className="summary-card sc-total">
-        <div className="sc-icon-wrap" style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }}>
-          <Icon name="ticket" size={18} style={{ color: '#fff' }} />
-        </div>
-        <div className="sc-info">
-          <span className="sc-value">{total}</span>
-          <span className="sc-label">Total de Chamados</span>
-        </div>
-        <div className="sc-bg-icon">
-          <Icon name="ticket" size={52} style={{ color: '#6366f1', opacity: 0.06 }} />
-        </div>
-      </div>
-
-      {/* Por status */}
-      {statuses.map((s, i) => (
-        <div key={s.id} className="summary-card" style={{ borderTopColor: s.color }}>
-          <div className="sc-icon-wrap" style={{ background: s.color + '22' }}>
-            <Icon name={statusIcons[i % statusIcons.length]} size={18} style={{ color: s.color }} />
+    <div className="summary-cards-wrap">
+      <div className="summary-cards">
+        {show('total') && (
+          <div className="summary-card sc-total">
+            <div className="sc-icon-wrap" style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }}>
+              <Icon name="ticket" size={18} style={{ color: '#fff' }} />
+            </div>
+            <div className="sc-info">
+              <span className="sc-value">{total}</span>
+              <span className="sc-label">Total de Chamados</span>
+            </div>
+            <div className="sc-bg-icon"><Icon name="ticket" size={52} style={{ color: '#6366f1', opacity: 0.06 }} /></div>
           </div>
-          <div className="sc-info">
-            <span className="sc-value" style={{ color: s.color }}>{byStatus[s.id] || 0}</span>
-            <span className="sc-label">{s.label}</span>
-          </div>
-          <div className="sc-bg-icon">
-            <Icon name={statusIcons[i % statusIcons.length]} size={52} style={{ color: s.color, opacity: 0.06 }} />
-          </div>
-        </div>
-      ))}
+        )}
 
-      {/* Críticos */}
-      <div className="summary-card" style={{ borderTopColor: '#ef4444' }}>
-        <div className="sc-icon-wrap" style={{ background: '#ef444422' }}>
-          <Icon name="alert" size={18} style={{ color: '#ef4444' }} />
-        </div>
-        <div className="sc-info">
-          <span className="sc-value" style={{ color: critical > 0 ? '#ef4444' : '#334155' }}>{critical}</span>
-          <span className="sc-label">Críticos Abertos</span>
-        </div>
-        <div className="sc-bg-icon">
-          <Icon name="alert" size={52} style={{ color: '#ef4444', opacity: 0.06 }} />
-        </div>
-      </div>
+        {statuses.map((s, i) => show(`status_${s.id}`) && (
+          <div key={s.id} className="summary-card" style={{ borderTopColor: s.color }}>
+            <div className="sc-icon-wrap" style={{ background: s.color + '22' }}>
+              <Icon name={statusIcons[i % statusIcons.length]} size={18} style={{ color: s.color }} />
+            </div>
+            <div className="sc-info">
+              <span className="sc-value" style={{ color: s.color }}>{byStatus[s.id] || 0}</span>
+              <span className="sc-label">{s.label}</span>
+            </div>
+            <div className="sc-bg-icon"><Icon name={statusIcons[i % statusIcons.length]} size={52} style={{ color: s.color, opacity: 0.06 }} /></div>
+          </div>
+        ))}
 
-      {/* Vencidos */}
-      <div className="summary-card" style={{ borderTopColor: '#f97316' }}>
-        <div className="sc-icon-wrap" style={{ background: '#f9731622' }}>
-          <Icon name="clock" size={18} style={{ color: '#f97316' }} />
-        </div>
-        <div className="sc-info">
-          <span className="sc-value" style={{ color: overdue > 0 ? '#f97316' : '#334155' }}>{overdue}</span>
-          <span className="sc-label">Prazo Vencido</span>
-        </div>
-        <div className="sc-bg-icon">
-          <Icon name="clock" size={52} style={{ color: '#f97316', opacity: 0.06 }} />
-        </div>
+        {show('critical') && (
+          <div className="summary-card" style={{ borderTopColor: '#ef4444' }}>
+            <div className="sc-icon-wrap" style={{ background: '#ef444422' }}>
+              <Icon name="alert" size={18} style={{ color: '#ef4444' }} />
+            </div>
+            <div className="sc-info">
+              <span className="sc-value" style={{ color: critical > 0 ? '#ef4444' : '#334155' }}>{critical}</span>
+              <span className="sc-label">Críticos Abertos</span>
+            </div>
+            <div className="sc-bg-icon"><Icon name="alert" size={52} style={{ color: '#ef4444', opacity: 0.06 }} /></div>
+          </div>
+        )}
+
+        {show('overdue') && (
+          <div className="summary-card" style={{ borderTopColor: '#f97316' }}>
+            <div className="sc-icon-wrap" style={{ background: '#f9731622' }}>
+              <Icon name="clock" size={18} style={{ color: '#f97316' }} />
+            </div>
+            <div className="sc-info">
+              <span className="sc-value" style={{ color: overdue > 0 ? '#f97316' : '#334155' }}>{overdue}</span>
+              <span className="sc-label">Prazo Vencido</span>
+            </div>
+            <div className="sc-bg-icon"><Icon name="clock" size={52} style={{ color: '#f97316', opacity: 0.06 }} /></div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function ListaTickets({ store, filter, search, setFilter }) {
-  const [selectedId, setSelectedId] = useState(null)
+function ListaTickets({ store, filter, search, setFilter, selectedId, setSelectedId }) {
   const [clientFilter, setClientFilter] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [showClientDrop, setShowClientDrop] = useState(false)
+  const [showCardConfig, setShowCardConfig] = useState(false)
   const clientRef = React.useRef()
+  const cardConfigRef = React.useRef()
 
-  // Fecha dropdown ao clicar fora
+  const allCardIds = React.useMemo(() => {
+    const ids = ['total', ...store.statuses.map(s => `status_${s.id}`), 'critical', 'overdue']
+    return ids
+  }, [store.statuses])
+
+  const { value: visibleCards, save: saveCards, clear: resetCards } = useSetting('dashboard_visible_cards', null)
+
+  function toggleCard(id) {
+    const current = visibleCards || allCardIds
+    const next = current.includes(id) ? current.filter(c => c !== id) : [...current, id]
+    saveCards(next)
+  }
+
   React.useEffect(() => {
     function handleClick(e) {
       if (clientRef.current && !clientRef.current.contains(e.target)) setShowClientDrop(false)
+      if (cardConfigRef.current && !cardConfigRef.current.contains(e.target)) setShowCardConfig(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -237,6 +264,34 @@ function ListaTickets({ store, filter, search, setFilter }) {
     )
   }
 
+  // Abre detalhe ANTES de calcular filtered
+  if (selectedId) {
+    const ticket = store.tickets.find(t => t.id === selectedId)
+    if (ticket) {
+      return (
+        <TicketDetail
+          ticket={ticket}
+          categories={store.categories}
+          types={store.types}
+          statuses={store.statuses}
+          onBack={() => setSelectedId(null)}
+          onUpdate={(id, changes) => store.updateTicket(id, changes)}
+          onDelete={(id) => { store.deleteTicket(id); setSelectedId(null) }}
+          onAction={(id, action) => store.addAction(id, action)}
+          onAddChecklist={(ticketId, text) => store.addChecklistItem(ticketId, text)}
+          onToggleChecklist={(itemId, checked) => store.toggleChecklistItem(itemId, checked)}
+          onRemoveChecklist={(itemId) => store.removeChecklistItem(itemId)}
+          onAddComment={(ticketId, comment) => store.addComment(ticketId, comment)}
+          onRemoveComment={(commentId) => store.removeComment(commentId)}
+          onAddAttachment={(ticketId, file, author) => store.addAttachment(ticketId, file, author)}
+          onRemoveAttachment={(attachmentId, fileUrl) => store.removeAttachment(attachmentId, fileUrl)}
+        />
+      )
+    }
+    // Ticket não encontrado, volta para lista
+    setSelectedId(null)
+  }
+
   const filtered = store.tickets.filter(t => {
     const q = search.toLowerCase()
     const matchSearch = !q ||
@@ -254,41 +309,24 @@ function ListaTickets({ store, filter, search, setFilter }) {
     return matchFilter && matchSearch && matchClient
   })
 
-  if (selectedId) {
-    const ticket = store.tickets.find(t => t.id === selectedId)
-    if (ticket) {
-      return (
-        <TicketDetail
-          ticket={ticket}
-          categories={store.categories}
-          types={store.types}
-          statuses={store.statuses}
-          onBack={() => setSelectedId(null)}
-          onUpdate={(id, changes) => store.updateTicket(id, changes)}
-          onDelete={(id) => { store.deleteTicket(id); setSelectedId(null) }}
-          onAction={(id, action) => store.addAction(id, action)}
-        />
-      )
-    }
-  }
-
   const counts = { all: store.tickets.length }
   store.statuses.forEach(s => { counts[s.id] = store.tickets.filter(t => t.status === s.id).length })
 
   return (
     <>
-      <SummaryCards tickets={store.tickets} statuses={store.statuses} />
+      <SummaryCards tickets={store.tickets} statuses={store.statuses} visibleCards={visibleCards} />
 
-      {/* Quick filters */}
-      <div className="quick-filters">
-        <button
-          className={`qf-btn ${filter === 'all' ? 'active' : ''}`}
-          onClick={() => setFilter('all')}
-        >
-          <Icon name="all" size={13} />
-          Todos
-          <span className="qf-count">{counts.all}</span>
-        </button>
+      {/* Barra: filtros + configurar visualização */}
+      <div className="dashboard-bar">
+        <div className="quick-filters">
+          <button
+            className={`qf-btn ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+          >
+            <Icon name="all" size={13} />
+            Todos
+            <span className="qf-count">{counts.all}</span>
+          </button>
 
         {store.statuses.map(s => (
           <button
@@ -376,6 +414,43 @@ function ListaTickets({ store, filter, search, setFilter }) {
             </div>
           )}
         </div>
+        </div>{/* end quick-filters */}
+
+        {/* Botão configurar visualização */}
+        <div className="card-config-wrap" ref={cardConfigRef}>
+          <button
+            className={`btn-card-config ${showCardConfig ? 'active' : ''}`}
+            onClick={() => setShowCardConfig(v => !v)}
+          >
+            <Icon name="settings" size={13} />
+            Visualização
+          </button>
+          {showCardConfig && (
+            <div className="card-config-dropdown">
+              <div className="card-config-header">
+                <span>Exibir cards</span>
+                <button className="card-config-reset" onClick={resetCards}>Restaurar</button>
+              </div>
+              {[
+                { id: 'total', label: 'Total de Chamados' },
+                ...store.statuses.map(s => ({ id: `status_${s.id}`, label: s.label })),
+                { id: 'critical', label: 'Críticos Abertos' },
+                { id: 'overdue', label: 'Prazo Vencido' },
+              ].map(card => {
+                const active = !visibleCards || visibleCards.includes(card.id)
+                return (
+                  <label key={card.id} className="card-config-item">
+                    <span className={`card-config-check ${active ? 'on' : ''}`}>
+                      {active && <Icon name="check" size={10} />}
+                    </span>
+                    <span>{card.label}</span>
+                    <input type="checkbox" checked={active} onChange={() => toggleCard(card.id)} style={{ display: 'none' }} />
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <TicketList
@@ -394,6 +469,7 @@ export default function App() {
   const location = useLocation()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [selectedId, setSelectedId] = useState(null)
 
   const addLog = useCallback((msg) => {
     console.log(`[Chatwoot] ${msg}`)
@@ -401,10 +477,24 @@ export default function App() {
 
   const { data: chatwoot } = useChatwoot(addLog)
 
+  function handleExport() {
+    const tickets = store.tickets
+    exportTableToPdf(tickets, store.categories, store.types, store.statuses, 'tickets.pdf')
+  }
+
   return (
-    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch}>
+    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onExport={handleExport}>
       <Routes>
-        <Route path="/" element={<ListaTickets store={store} filter={filter} search={search} setFilter={setFilter} />} />
+        <Route path="/" element={
+          <ListaTickets
+            store={store}
+            filter={filter}
+            search={search}
+            setFilter={setFilter}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+          />
+        } />
         <Route path="/novo" element={<NovoTicket store={store} />} />
         <Route path="/fechar" element={<FecharTicket store={store} />} />
         <Route path="/verificar" element={<VerificarTicket store={store} />} />

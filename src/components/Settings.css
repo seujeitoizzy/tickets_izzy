@@ -481,3 +481,16 @@
 .token-hint strong {
   color: #94a3b8;
 }
+
+.item-fixed {
+  font-size: 10px;
+  color: #334155;
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: auto;
+}

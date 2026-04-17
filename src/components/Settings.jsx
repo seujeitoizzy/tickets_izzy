@@ -120,6 +120,9 @@ function TypeManager({ types, onAdd, onRemove }) {
   )
 }
 
+// Status fixos que não podem ser excluídos
+const FIXED_STATUSES = ['aberto', 'fechado', 'open', 'closed']
+
 function StatusManager({ statuses, onAdd, onRemove }) {
   const [form, setForm] = useState({ label: '', color: COLORS[0] })
   const [showPicker, setShowPicker] = useState(false)
@@ -132,14 +135,21 @@ function StatusManager({ statuses, onAdd, onRemove }) {
     setShowPicker(false)
   }
 
+  function isFixed(s) {
+    return FIXED_STATUSES.includes(s.label.toLowerCase()) || FIXED_STATUSES.includes(s.id?.toLowerCase())
+  }
+
   return (
     <SectionCard title="Status">
-      <p className="section-hint">Define os status disponíveis para os tickets.</p>
+      <p className="section-hint">Define os status disponíveis para os tickets. Status <strong>Aberto</strong> e <strong>Fechado</strong> são fixos.</p>
       <ItemList items={statuses} renderItem={s => (
         <div key={s.id} className="settings-item">
           <span className="item-color" style={{ background: s.color }} />
           <span className="item-label">{s.label}</span>
-          <button className="btn-remove" onClick={() => onRemove(s.id)}><Icon name="close" size={11} /></button>
+          {isFixed(s)
+            ? <span className="item-fixed">fixo</span>
+            : <button className="btn-remove" onClick={() => onRemove(s.id)}><Icon name="close" size={11} /></button>
+          }
         </div>
       )} />
       <form className="add-form" onSubmit={submit}>

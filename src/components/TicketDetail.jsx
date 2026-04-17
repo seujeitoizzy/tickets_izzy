@@ -3,6 +3,7 @@ import './TicketDetail.css'
 import { PRIORITIES, ACTION_TYPES } from '../data/defaults'
 import TicketForm from './TicketForm'
 import Icon from './Icon'
+import { useChatwootAgents } from '../hooks/useChatwootAgents'
 
 function fmt(iso) {
   return new Date(iso).toLocaleString('pt-BR', {
@@ -31,7 +32,7 @@ function DeadlineBadge({ deadline }) {
   )
 }
 
-function TimelineEntry({ entry }) {
+function TimelineEntry({ entry, statuses = [] }) {
   if (entry.type === 'status_change') {
     const status = statuses.find(s => s.id === entry.status)
     return (
@@ -65,11 +66,24 @@ function TimelineEntry({ entry }) {
   )
 }
 
-export default function TicketDetail({ ticket, categories, types, statuses = [], onBack, onUpdate, onDelete, onAction }) {
+export default function TicketDetail({ ticket, categories, types, statuses = [], onBack, onUpdate, onDelete, onAction, onAddChecklist, onToggleChecklist, onRemoveChecklist, onAddComment, onRemoveComment, onAddAttachment, onRemoveAttachment }) {
+  const [tab, setTab] = useState('overview') // overview | comments | attachments | timeline
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [actionForm, setActionForm] = useState({ actionType: 'note', content: '', author: '' })
   const [showActionForm, setShowActionForm] = useState(false)
+  const [checkInput, setCheckInput] = useState('')
+  const [commentText, setCommentText] = useState('')
+  const [commentAuthor, setCommentAuthor] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [editingAssignee, setEditingAssignee] = useState(false)
+  const [editingDeadline, setEditingDeadline] = useState(false)
+  const [deadlineVal, setDeadlineVal] = useState(
+    ticket.deadline ? new Date(ticket.deadline).toISOString().slice(0, 16) : ''
+  )
+  const [deadlineIndet, setDeadlineIndet] = useState(ticket.deadlineIndeterminate || false)
+
+  const { agents: chatwootAgents } = useChatwootAgents()
 
   const cat = categories.find(c => c.id === ticket.categoryId)
   const type = types.find(t => t.id === ticket.typeId)
@@ -115,12 +129,6 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
           Voltar
         </button>
         <div className="detail-topbar-actions">
-          {ticket.status !== 'closed' && (
-            <button className="btn-resolve" onClick={resolveTicket}>
-              <Icon name="checkCircle" size={14} />
-              Resolver Ticket
-            </button>
-          )}
           <button className="btn-edit" onClick={() => setEditing(true)}>
             <Icon name="edit" size={13} />
             Editar
@@ -139,7 +147,32 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
               </>
             )
           }
+          {ticket.status !== 'closed' && (
+            <button className="btn-resolve" onClick={resolveTicket}>
+              <Icon name="checkCircle" size={14} />
+              Resolver
+            </button>
+          )}
         </div>
+      </div>
+
+      <div className="detail-tabs">
+        {[
+          { id: 'overview', label: 'Visão Geral', icon: 'ticket' },
+          { id: 'comments', label: 'Comentários', icon: 'message', count: ticket.comments?.length || 0 },
+          { id: 'attachments', label: 'Anexos', icon: 'fileEdit', count: ticket.attachments?.length || 0 },
+          { id: 'timeline', label: 'Timeline', icon: 'clock', count: ticket.timeline?.length || 0 },
+        ].map(t => (
+          <button
+            key={t.id}
+            className={`detail-tab ${tab === t.id ? 'active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            <Icon name={t.icon} size={13} />
+            {t.label}
+            {t.count > 0 && <span className="tab-badge">{t.count}</span>}
+          </button>
+        ))}
       </div>
 
       <div className="detail-layout">
@@ -212,19 +245,42 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
               <div className="meta-item">
                 <span className="meta-label">Categoria</span>
                 {cat
-                  ? <span className="cat-tag" style={{ background: cat.color + '18', color: cat.color, borderColor: cat.color + '44' }}>{cat.label}</span>
+                  ? <span className="cat-tag-sm" style={{ background: cat.color + '18', color: cat.color, borderColor: cat.color + '44' }}>{cat.label}</span>
                   : <span className="meta-val">—</span>
                 }
               </div>
 
               <div className="meta-item">
                 <span className="meta-label">Responsável</span>
-                <span className="meta-val assignee-val">
-                  {ticket.assignee
-                    ? <><Icon name="user" size={13} style={{ color: '#64748b' }} />{ticket.assignee}</>
-                    : '—'
-                  }
-                </span>
+                {editingAssignee ? (
+                  <div className="meta-inline-edit">
+                    <select
+                      autoFocus
+                      className="meta-select"
+                      value={ticket.assignee || ''}
+                      onChange={e => {
+                        onUpdate(ticket.id, { assignee: e.target.value })
+                        setEditingAssignee(false)
+                      }}
+                      onBlur={() => setEditingAssignee(false)}
+                    >
+                      <option value="">— Sem responsável —</option>
+                      {chatwootAgents.map(a => (
+                        <option key={a.id} value={a.name}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <button className="meta-editable" onClick={() => setEditingAssignee(true)}>
+                    <span className="assignee-val">
+                      {ticket.assignee
+                        ? <><Icon name="user" size={13} style={{ color: '#64748b' }} />{ticket.assignee}</>
+                        : <span style={{ color: '#334155' }}>Clique para definir</span>
+                      }
+                    </span>
+                    <Icon name="edit" size={11} style={{ color: '#334155', marginLeft: 4 }} />
+                  </button>
+                )}
               </div>
 
               <div className="meta-item">
@@ -237,12 +293,36 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
 
               <div className="meta-item">
                 <span className="meta-label">Prazo</span>
-                {ticket.deadlineIndeterminate ? (
-                  <span className="meta-val" style={{ color: '#64748b' }}>Indeterminado</span>
-                ) : ticket.deadline ? (
-                  <DeadlineBadge deadline={ticket.deadline} />
+                {editingDeadline ? (
+                  <div className="meta-inline-edit">
+                    <label className="checkbox-label" style={{ fontSize: 13, color: '#94a3b8' }}>
+                      <input type="checkbox" checked={deadlineIndet} onChange={e => setDeadlineIndet(e.target.checked)} style={{ display: 'none' }} />
+                      <span className="checkbox-box" style={deadlineIndet ? { background: '#6366f1', borderColor: '#6366f1' } : {}} />
+                      <span>Prazo indeterminado</span>
+                    </label>
+                    {!deadlineIndet && (
+                      <input type="datetime-local" className="meta-date-input" value={deadlineVal} onChange={e => setDeadlineVal(e.target.value)} />
+                    )}
+                    <div className="meta-edit-actions">
+                      <button className="meta-save-btn" onClick={() => {
+                        onUpdate(ticket.id, { deadline: deadlineIndet ? null : (deadlineVal || null), deadlineIndeterminate: deadlineIndet })
+                        setEditingDeadline(false)
+                      }}>
+                        <Icon name="check" size={12} /> Salvar
+                      </button>
+                      <button className="meta-cancel-btn" onClick={() => setEditingDeadline(false)}>Cancelar</button>
+                    </div>
+                  </div>
                 ) : (
-                  <span className="meta-val" style={{ color: '#475569' }}>Não definido</span>
+                  <button className="meta-editable" onClick={() => setEditingDeadline(true)}>
+                    {ticket.deadlineIndeterminate
+                      ? <span style={{ color: '#64748b' }}>Indeterminado</span>
+                      : ticket.deadline
+                        ? <DeadlineBadge deadline={ticket.deadline} />
+                        : <span style={{ color: '#334155' }}>Clique para definir</span>
+                    }
+                    <Icon name="edit" size={11} style={{ color: '#334155', marginLeft: 4 }} />
+                  </button>
                 )}
               </div>
             </div>
@@ -253,11 +333,70 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
                 <p className="detail-desc">{ticket.description}</p>
               </div>
             )}
+
+            {/* Checklist */}
+            <div className="checklist-block">
+              <div className="checklist-header">
+                <div className="meta-label">Checklist</div>
+                {ticket.checklist?.length > 0 && (
+                  <span className="checklist-progress">
+                    {ticket.checklist.filter(c => c.checked).length}/{ticket.checklist.length}
+                  </span>
+                )}
+              </div>
+
+              {ticket.checklist?.length > 0 && (
+                <div className="checklist-bar">
+                  <div
+                    className="checklist-bar-fill"
+                    style={{ width: `${Math.round((ticket.checklist.filter(c => c.checked).length / ticket.checklist.length) * 100)}%` }}
+                  />
+                </div>
+              )}
+
+              <div className="checklist-items">
+                {(ticket.checklist || []).map(item => (
+                  <div key={item.id} className={`checklist-item ${item.checked ? 'checked' : ''}`}>
+                    <button
+                      className="checklist-checkbox"
+                      onClick={() => onToggleChecklist?.(item.id, !item.checked)}
+                    >
+                      {item.checked && <Icon name="check" size={11} />}
+                    </button>
+                    <span className="checklist-text">{item.text}</span>
+                    <button className="checklist-remove" onClick={() => onRemoveChecklist?.(item.id)}>
+                      <Icon name="close" size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <form
+                className="checklist-add"
+                onSubmit={e => {
+                  e.preventDefault()
+                  if (!checkInput.trim()) return
+                  onAddChecklist?.(ticket.id, checkInput.trim())
+                  setCheckInput('')
+                }}
+              >
+                <input
+                  value={checkInput}
+                  onChange={e => setCheckInput(e.target.value)}
+                  placeholder="Adicionar item ao checklist..."
+                />
+                <button type="submit" className="checklist-add-btn">
+                  <Icon name="plus" size={13} />
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT: timeline */}
+        {/* RIGHT: conteúdo da tab */}
         <div className="detail-timeline">
+          {tab === 'overview' && (
+            <>
           <div className="tl-header">
             <span>Timeline</span>
             <button className="btn-add-action" onClick={() => setShowActionForm(v => !v)}>
@@ -304,9 +443,179 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
           <div className="tl-list">
             {timeline.length === 0 && <p className="tl-empty">Nenhum evento registrado.</p>}
             {timeline.map(entry => (
-              <TimelineEntry key={entry.id} entry={entry} />
+              <TimelineEntry key={entry.id} entry={entry} statuses={statuses} />
             ))}
           </div>
+          </>
+          )}
+
+          {/* Tab: Comentários */}
+          {tab === 'comments' && (
+            <div className="tab-comments">
+              <div className="comments-list">
+                {(ticket.comments || []).length === 0 && (
+                  <div className="tab-empty">
+                    <Icon name="message" size={28} style={{ color: '#334155' }} />
+                    <p>Nenhum comentário ainda.</p>
+                  </div>
+                )}
+                {(ticket.comments || []).map(c => (
+                  <div key={c.id} className="comment-item">
+                    <div className="comment-avatar">
+                      {c.author.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="comment-body">
+                      <div className="comment-header">
+                        <span className="comment-author">{c.author}</span>
+                        <span className="comment-time">{fmt(c.createdAt)}</span>
+                        <button className="comment-delete" onClick={() => onRemoveComment?.(c.id)}>
+                          <Icon name="close" size={10} />
+                        </button>
+                      </div>
+                      <p className="comment-text">{c.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <form className="comment-form" onSubmit={e => {
+                e.preventDefault()
+                if (!commentText.trim()) return
+                onAddComment?.(ticket.id, { author: commentAuthor || 'Agente', content: commentText.trim() })
+                setCommentText('')
+              }}>
+                <input
+                  className="comment-author-input"
+                  placeholder="Seu nome"
+                  value={commentAuthor}
+                  onChange={e => setCommentAuthor(e.target.value)}
+                />
+                <div className="comment-input-wrap">
+                  <textarea
+                    placeholder="Escrever comentário interno..."
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    rows={3}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && e.ctrlKey) {
+                        e.preventDefault()
+                        if (!commentText.trim()) return
+                        onAddComment?.(ticket.id, { author: commentAuthor || 'Agente', content: commentText.trim() })
+                        setCommentText('')
+                      }
+                    }}
+                  />
+                  <button type="submit" className="btn-primary-sm">
+                    <Icon name="message" size={13} /> Comentar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Tab: Anexos */}
+          {tab === 'attachments' && (
+            <div className="tab-attachments">
+              <div className="attachments-list">
+                {(ticket.attachments || []).length === 0 && (
+                  <div className="tab-empty">
+                    <Icon name="fileEdit" size={28} style={{ color: '#334155' }} />
+                    <p>Nenhum anexo ainda.</p>
+                  </div>
+                )}
+                {(ticket.attachments || []).map(a => {
+                  const isImage = a.fileType?.startsWith('image/')
+                  const sizeKb = a.fileSize ? `${(a.fileSize / 1024).toFixed(0)} KB` : ''
+                  return (
+                    <div key={a.id} className="attachment-item">
+                      {isImage ? (
+                        <a href={a.fileUrl} target="_blank" rel="noreferrer" className="attachment-thumb">
+                          <img src={a.fileUrl} alt={a.filename} />
+                        </a>
+                      ) : (
+                        <div className="attachment-icon">
+                          <Icon name="fileEdit" size={20} style={{ color: '#6366f1' }} />
+                        </div>
+                      )}
+                      <div className="attachment-info">
+                        <a href={a.fileUrl} target="_blank" rel="noreferrer" className="attachment-name">
+                          {a.filename}
+                        </a>
+                        <span className="attachment-meta">
+                          {sizeKb} {a.uploadedBy && `· ${a.uploadedBy}`} · {fmt(a.createdAt)}
+                        </span>
+                      </div>
+                      <button className="attachment-delete" onClick={() => onRemoveAttachment?.(a.id, a.fileUrl)}>
+                        <Icon name="trash" size={13} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+              <label className="upload-btn">
+                {uploading ? (
+                  <><div className="btn-spinner" style={{ borderTopColor: '#6366f1' }} /> Enviando...</>
+                ) : (
+                  <><Icon name="plus" size={13} /> Adicionar anexo</>
+                )}
+                <input
+                  type="file"
+                  style={{ display: 'none' }}
+                  multiple
+                  onChange={async e => {
+                    const files = Array.from(e.target.files)
+                    setUploading(true)
+                    for (const file of files) {
+                      await onAddAttachment?.(ticket.id, file, ticket.assignee || 'Agente')
+                    }
+                    setUploading(false)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* Tab: Timeline */}
+          {tab === 'timeline' && (
+            <>
+              <div className="tl-header">
+                <span>Timeline</span>
+                <button className="btn-add-action" onClick={() => setShowActionForm(v => !v)}>
+                  {showActionForm
+                    ? <><Icon name="close" size={12} /> Cancelar</>
+                    : <><Icon name="plus" size={12} /> Registrar Ação</>
+                  }
+                </button>
+              </div>
+              {showActionForm && (
+                <form className="action-form" onSubmit={submitAction}>
+                  <div className="af-field">
+                    <label>Tipo de Ação</label>
+                    <select value={actionForm.actionType} onChange={e => setActionForm(p => ({ ...p, actionType: e.target.value }))}>
+                      {ACTION_TYPES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="af-field">
+                    <label>Descrição *</label>
+                    <textarea value={actionForm.content} onChange={e => setActionForm(p => ({ ...p, content: e.target.value }))} rows={3} required />
+                  </div>
+                  <div className="af-field">
+                    <label>Responsável</label>
+                    <input value={actionForm.author} onChange={e => setActionForm(p => ({ ...p, author: e.target.value }))} placeholder="Seu nome" />
+                  </div>
+                  <button type="submit" className="btn-primary-sm">
+                    <Icon name="check" size={12} /> Registrar
+                  </button>
+                </form>
+              )}
+              <div className="tl-list">
+                {timeline.length === 0 && <p className="tl-empty">Nenhum evento registrado.</p>}
+                {timeline.map(entry => (
+                  <TimelineEntry key={entry.id} entry={entry} statuses={statuses} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

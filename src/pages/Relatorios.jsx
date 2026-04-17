@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import Icon from '../components/Icon'
+import { exportElementToPdf } from '../lib/exportPdf'
 import './Relatorios.css'
 
 const PERIODS = [
@@ -162,15 +163,24 @@ export default function Relatorios({ store }) {
   }
 
   return (
-    <div className="relatorios-wrap">
+    <div className="relatorios-wrap" id="relatorios-content">
       <div className="relatorios-header">
         <h2>Relatórios</h2>
-        <div className="period-tabs">
-          {PERIODS.map(p => (
-            <button key={p.id} className={`period-tab ${period === p.id ? 'active' : ''}`} onClick={() => setPeriod(p.id)}>
-              {p.label}
-            </button>
-          ))}
+        <div className="relatorios-header-right">
+          <div className="period-tabs">
+            {PERIODS.map(p => (
+              <button key={p.id} className={`period-tab ${period === p.id ? 'active' : ''}`} onClick={() => setPeriod(p.id)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="btn-export"
+            onClick={() => exportElementToPdf('relatorios-content', `relatorio-${period}.pdf`)}
+          >
+            <Icon name="fileEdit" size={14} />
+            Exportar PDF
+          </button>
         </div>
       </div>
 

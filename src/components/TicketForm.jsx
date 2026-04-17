@@ -125,6 +125,8 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
     deadline: initial.deadline ? new Date(initial.deadline).toISOString().slice(0, 16) : '',
     deadlineIndeterminate: initial.deadlineIndeterminate || false,
   })
+  const [checkItems, setCheckItems] = useState(initial.checklist?.map(c => c.text) || [])
+  const [checkInput, setCheckInput] = useState('')
 
   function handle(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -140,6 +142,7 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
     onSubmit({
       ...form,
       deadline: form.deadlineIndeterminate ? null : (form.deadline || null),
+      checklist: checkItems.filter(t => t.trim()),
     })
   }
 
@@ -268,6 +271,54 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
                 />
               </div>
             )}
+          </div>
+
+          <div className="section-label">Checklist</div>
+          <div className="form-checklist">
+            {checkItems.length === 0 && (
+              <p className="form-checklist-empty">Nenhum item adicionado.</p>
+            )}
+            {checkItems.map((item, i) => (
+              <div key={i} className="form-checklist-item">
+                <span className="form-checklist-num">{i + 1}</span>
+                <span className="form-checklist-text">{item}</span>
+                <button
+                  type="button"
+                  className="form-checklist-remove"
+                  onClick={() => setCheckItems(prev => prev.filter((_, idx) => idx !== i))}
+                >
+                  <Icon name="close" size={10} />
+                </button>
+              </div>
+            ))}
+            <div className="form-checklist-add">
+              <Icon name="plus" size={13} style={{ color: '#475569', flexShrink: 0 }} />
+              <input
+                value={checkInput}
+                onChange={e => setCheckInput(e.target.value)}
+                placeholder="Adicionar item e pressionar Enter..."
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (!checkInput.trim()) return
+                    setCheckItems(prev => [...prev, checkInput.trim()])
+                    setCheckInput('')
+                  }
+                }}
+              />
+              {checkInput.trim() && (
+                <button
+                  type="button"
+                  className="form-checklist-confirm"
+                  onClick={() => {
+                    setCheckItems(prev => [...prev, checkInput.trim()])
+                    setCheckInput('')
+                  }}
+                >
+                  <Icon name="check" size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="form-actions">

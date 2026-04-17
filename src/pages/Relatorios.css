@@ -217,3 +217,9 @@
   font-size: 11px;
   color: #64748b;
 }
+
+.relatorios-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

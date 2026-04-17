@@ -23,6 +23,15 @@ function mapTicket(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     timeline: (row.ast_ticket_timeline || []).map(mapTimeline),
+    checklist: (row.ast_checklist_items || [])
+      .sort((a, b) => a.order_num - b.order_num)
+      .map(c => ({ id: c.id, text: c.text, checked: c.checked, orderNum: c.order_num })),
+    comments: (row.ast_ticket_comments || [])
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .map(c => ({ id: c.id, author: c.author, content: c.content, isInternal: c.is_internal, createdAt: c.created_at })),
+    attachments: (row.ast_ticket_attachments || [])
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .map(a => ({ id: a.id, filename: a.filename, fileUrl: a.file_url, fileType: a.file_type, fileSize: a.file_size, uploadedBy: a.uploaded_by, createdAt: a.created_at })),
   }
 }
 
@@ -83,10 +92,22 @@ export function useStore() {
   async function fetchTickets() {
     const { data, error } = await supabase
       .from('ast_tickets')
-      .select(`*, ast_ticket_timeline(*)`)
+      .select(`*, ast_ticket_timeline(*), ast_checklist_items(*), ast_ticket_comments(*), ast_ticket_attachments(*)`)
       .order('created_at', { ascending: false })
 
-    if (error) { console.error('[fetchTickets]', error); return }
+    if (error) {
+      if (error.message?.includes('ast_checklist_items') || error.message?.includes('ast_ticket_comments') || error.message?.includes('ast_ticket_attachments')) {
+        const { data: data2, error: error2 } = await supabase
+          .from('ast_tickets')
+          .select(`*, ast_ticket_timeline(*)`)
+          .order('created_at', { ascending: false })
+        if (error2) { console.error('[fetchTickets]', error2); return }
+        setTickets(data2.map(r => mapTicket({ ...r, ast_checklist_items: [], ast_ticket_comments: [], ast_ticket_attachments: [] })))
+        return
+      }
+      console.error('[fetchTickets]', error)
+      return
+    }
     setTickets(data.map(mapTicket))
   }
 
@@ -154,6 +175,7 @@ export function useStore() {
 
     if (error) { console.error('[createTicket]', error.message); return }
 
+    // Timeline inicial
     await supabase.from('ast_ticket_timeline').insert({
       ticket_id: row.id,
       type: 'status_change',
@@ -161,6 +183,14 @@ export function useStore() {
       status: 'open',
       author: data.assignee || 'Sistema',
     })
+
+    // Checklist inicial
+    if (data.checklist?.length) {
+      const items = data.checklist.map((text, i) => ({
+        ticket_id: row.id, text, checked: false, order_num: i,
+      }))
+      await supabase.from('ast_checklist_items').insert(items)
+    }
 
     await fetchTickets()
     return row
@@ -319,10 +349,102 @@ export function useStore() {
     setAgents(prev => prev.filter(a => a.id !== id))
   }
 
+  // --- Checklist ---
+  async function addChecklistItem(ticketId, text) {
+    const ticket = tickets.find(t => t.id === ticketId)
+    const orderNum = ticket?.checklist?.length || 0
+    const { error } = await supabase.from('ast_checklist_items').insert({
+      ticket_id: ticketId, text, checked: false, order_num: orderNum,
+    })
+    if (error) { console.error('[addChecklistItem]', error); return }
+    await fetchTickets()
+  }
+
+  async function toggleChecklistItem(itemId, checked) {
+    const { error } = await supabase.from('ast_checklist_items').update({ checked }).eq('id', itemId)
+    if (error) { console.error('[toggleChecklistItem]', error); return }
+    setTickets(prev => prev.map(t => ({
+      ...t,
+      checklist: (t.checklist || []).map(c => c.id === itemId ? { ...c, checked } : c)
+    })))
+  }
+
+  async function removeChecklistItem(itemId) {
+    const { error } = await supabase.from('ast_checklist_items').delete().eq('id', itemId)
+    if (error) { console.error('[removeChecklistItem]', error); return }
+    setTickets(prev => prev.map(t => ({
+      ...t,
+      checklist: (t.checklist || []).filter(c => c.id !== itemId)
+    })))
+  }
+
+  // --- Comments ---
+  async function addComment(ticketId, comment) {
+    const { error } = await supabase.from('ast_ticket_comments').insert({
+      ticket_id: ticketId,
+      author: comment.author,
+      content: comment.content,
+      is_internal: comment.isInternal ?? true,
+    })
+    if (error) { console.error('[addComment]', error); return }
+    await fetchTickets()
+  }
+
+  async function removeComment(commentId) {
+    const { error } = await supabase.from('ast_ticket_comments').delete().eq('id', commentId)
+    if (error) { console.error('[removeComment]', error); return }
+    setTickets(prev => prev.map(t => ({
+      ...t,
+      comments: (t.comments || []).filter(c => c.id !== commentId)
+    })))
+  }
+
+  // --- Attachments ---
+  async function addAttachment(ticketId, file, uploadedBy) {
+    const ext = file.name.split('.').pop()
+    const path = `${ticketId}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('ticket-attachments')
+      .upload(path, file)
+
+    if (uploadError) { console.error('[addAttachment upload]', uploadError); return }
+
+    const { data: urlData } = supabase.storage
+      .from('ticket-attachments')
+      .getPublicUrl(path)
+
+    const { error } = await supabase.from('ast_ticket_attachments').insert({
+      ticket_id: ticketId,
+      filename: file.name,
+      file_url: urlData.publicUrl,
+      file_type: file.type,
+      file_size: file.size,
+      uploaded_by: uploadedBy,
+    })
+
+    if (error) { console.error('[addAttachment]', error); return }
+    await fetchTickets()
+  }
+
+  async function removeAttachment(attachmentId, fileUrl) {
+    const path = fileUrl.split('/ticket-attachments/')[1]
+    if (path) await supabase.storage.from('ticket-attachments').remove([path])
+    const { error } = await supabase.from('ast_ticket_attachments').delete().eq('id', attachmentId)
+    if (error) { console.error('[removeAttachment]', error); return }
+    setTickets(prev => prev.map(t => ({
+      ...t,
+      attachments: (t.attachments || []).filter(a => a.id !== attachmentId)
+    })))
+  }
+
   return {
     tickets, categories, types, statuses, agents, loading,
     createTicket, updateTicket, deleteTicket, addAction,
     addCategory, removeCategory, addType, removeType,
     addStatus, removeStatus, addAgent, bulkAddAgents, removeAgent,
+    addChecklistItem, toggleChecklistItem, removeChecklistItem,
+    addComment, removeComment,
+    addAttachment, removeAttachment,
   }
 }
