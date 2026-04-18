@@ -9,7 +9,7 @@ export default function FecharTicket({ store }) {
   const navigate = useNavigate()
   const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: true })
   const [resolved, setResolved] = useState(false)
-  const [note, setNote] = useState('')
+  const [notes, setNotes] = useState({}) // Objeto para armazenar notas por ticket ID
 
   const tickets = store.tickets.filter(t => {
     const ticketConvId = String(t.chatwootConversationId || '').replace('#', '').trim()
@@ -22,11 +22,25 @@ export default function FecharTicket({ store }) {
     return t.status !== 'closed' && (matchConv || matchName)
   })
 
+  // Função para atualizar nota de um ticket específico
+  function updateNote(ticketId, value) {
+    setNotes(prev => ({
+      ...prev,
+      [ticketId]: value
+    }))
+  }
+
+  // Função para obter nota de um ticket específico
+  function getNote(ticketId) {
+    return notes[ticketId] || ''
+  }
+
   function resolveTicket(ticket) {
+    const ticketNote = getNote(ticket.id)
     store.updateTicket(ticket.id, { status: 'closed' })
     store.addAction(ticket.id, {
       actionType: 'resolution',
-      content: note.trim() || 'Ticket encerrado via Chatwoot',
+      content: ticketNote.trim() || 'Ticket encerrado via Chatwoot',
       author: chatwoot?.agentName || 'Agente',
     })
     setResolved(true)
@@ -81,8 +95,8 @@ export default function FecharTicket({ store }) {
               <div className="tcc-note">
                 <label>Observação de encerramento (opcional)</label>
                 <textarea
-                  value={note}
-                  onChange={e => setNote(e.target.value)}
+                  value={getNote(ticket.id)}
+                  onChange={e => updateNote(ticket.id, e.target.value)}
                   placeholder="Ex: Problema resolvido, cliente orientado..."
                   rows={2}
                 />

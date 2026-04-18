@@ -13,6 +13,72 @@
   display: flex;
   flex-direction: column;
   padding: 16px 0;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.sidebar.closed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+  opacity: 0;
+}
+
+.sidebar.closed .sidebar-logo,
+.sidebar.closed .sidebar-nav,
+.sidebar.closed .sidebar-bottom {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 1001;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    transform: translateX(0);
+  }
+  
+  .sidebar.closed {
+    transform: translateX(-100%);
+    width: 220px; /* Manter largura para animação suave */
+    min-width: 220px;
+    padding: 16px 0; /* Restaurar padding */
+    opacity: 1; /* Restaurar opacidade */
+  }
+  
+  .sidebar.closed .sidebar-logo,
+  .sidebar.closed .sidebar-nav,
+  .sidebar.closed .sidebar-bottom {
+    display: flex; /* Restaurar display em mobile */
+  }
+  
+  .sidebar.closed .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    display: block;
+  }
 }
 
 .sidebar-logo {
@@ -93,6 +159,13 @@
   flex-direction: column;
   overflow: hidden;
   background: #0f172a;
+  transition: margin-left 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0; /* Sempre sem margem em mobile */
+  }
 }
 
 .topbar {
@@ -102,6 +175,31 @@
   padding: 12px 24px;
   border-bottom: 1px solid #1e293b;
   background: #0f172a;
+}
+
+.hamburger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.hamburger-btn:hover {
+  background: #1e293b;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+.hamburger-btn:active {
+  transform: scale(0.95);
 }
 
 .search-input {

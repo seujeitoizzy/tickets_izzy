@@ -34,6 +34,8 @@ function NavGroup({ label, icon, children, defaultOpen = false }) {
 function Layout({ children, store, filter, setFilter, search, setSearch, onExport }) {
   const navigate = useNavigate()
   const location = useLocation()
+  // Inicializar sidebar fechada em mobile, aberta em desktop
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768)
   const isSettings = location.pathname === '/settings'
   const isList = location.pathname === '/'
 
@@ -42,9 +44,24 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
     counts[s.id] = store.tickets.filter(t => t.status === s.id).length
   })
 
+  // Fechar sidebar ao clicar no overlay (mobile)
+  const handleOverlayClick = () => {
+    if (window.innerWidth <= 768) {
+      setSidebarOpen(false)
+    }
+  }
+
   return (
     <div className="app">
-      <aside className="sidebar">
+      {/* Overlay para mobile */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={handleOverlayClick}
+        />
+      )}
+      
+      <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-logo">
           <Icon name="ticket" size={20} />
           <span>Tickets</span>
@@ -104,6 +121,14 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
 
       <div className="content">
         <header className="topbar">
+          <button 
+            className="hamburger-btn" 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+          >
+            <Icon name="menu" size={16} />
+          </button>
+          
           {isList && (
             <div className="search-wrap">
               <Icon name="search" size={14} className="search-icon" />
