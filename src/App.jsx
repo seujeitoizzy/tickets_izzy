@@ -31,6 +31,21 @@ function NavGroup({ label, icon, children, defaultOpen = false }) {
   )
 }
 
+// Função helper para mapear status de forma consistente
+function getTicketsByStatusHelper(tickets, statuses, statusId) {
+  const statusObj = statuses.find(s => s.id === statusId)
+  if (!statusObj) return []
+  
+  return tickets.filter(t => 
+    t.status === statusId ||
+    t.status === statusObj.label ||
+    (statusObj.label === 'Aberto' && (t.status === 'open' || t.status === 'Aberto')) ||
+    (statusObj.label === 'Fechado' && (t.status === 'closed' || t.status === 'Fechado')) ||
+    (statusObj.label === 'Em Progresso' && (t.status === 'in_progress' || t.status === 'Em Progresso')) ||
+    (statusObj.label === 'Aguardando' && (t.status === 'waiting' || t.status === 'Aguardando'))
+  )
+}
+
 function Layout({ children, store, filter, setFilter, search, setSearch, onExport }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,9 +54,14 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
   const isSettings = location.pathname === '/settings'
   const isList = location.pathname === '/'
 
+  // Função helper para mapear status
+  const getTicketsByStatusLocal = (statusId) => {
+    return getTicketsByStatusHelper(store.tickets, store.statuses, statusId)
+  }
+
   const counts = { all: store.tickets.length }
   store.statuses.forEach(s => {
-    counts[s.id] = store.tickets.filter(t => t.status === s.id).length
+    counts[s.id] = getTicketsByStatusHelper(store.tickets, store.statuses, s.id).length
   })
 
   // Fechar sidebar ao clicar no overlay (mobile)
@@ -327,9 +347,13 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
       (t.ticketNumber && String(t.ticketNumber).includes(q.replace('#', '')))
 
     let matchFilter = true
-    if (filter === '__critical') matchFilter = t.priority === 'critical' && t.status !== 'closed'
-    else if (filter === '__overdue') matchFilter = t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) < new Date() && t.status !== 'closed'
-    else if (filter !== 'all') matchFilter = t.status === filter
+    if (filter === '__critical') matchFilter = t.priority === 'critical' && (t.status !== 'closed' && t.status !== 'Fechado')
+    else if (filter === '__overdue') matchFilter = t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) < new Date() && (t.status !== 'closed' && t.status !== 'Fechado')
+    else if (filter !== 'all') {
+      // Usar a mesma lógica de mapeamento
+      const ticketsWithStatus = getTicketsByStatusHelper(store.tickets, store.statuses, filter)
+      matchFilter = ticketsWithStatus.some(ticket => ticket.id === t.id)
+    }
 
     const matchClient = !clientFilter || t.clientName === clientFilter
 
@@ -337,7 +361,9 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
   })
 
   const counts = { all: store.tickets.length }
-  store.statuses.forEach(s => { counts[s.id] = store.tickets.filter(t => t.status === s.id).length })
+  store.statuses.forEach(s => {
+    counts[s.id] = getTicketsByStatusHelper(store.tickets, store.statuses, s.id).length
+  })
 
   return (
     <>
