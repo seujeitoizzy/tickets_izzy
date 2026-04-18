@@ -115,7 +115,7 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="sidebar-version">v1.0.0-beta</div>
+          <div className="sidebar-version">v1.0.0</div>
         </div>
       </aside>
 
