@@ -30,8 +30,8 @@ export const PRIORITIES = [
 ]
 
 export const STATUSES = [
-  { id: 'open', label: 'Aberto', color: '#60a5fa' },
-  { id: 'in_progress', label: 'Em Progresso', color: '#fbbf24' },
+  { id: 'open', label: 'Aberto', color: '#f59e0b' },       // Amarelo
+  { id: 'in_progress', label: 'Em Progresso', color: '#3b82f6' }, // Azul
   { id: 'waiting', label: 'Aguardando', color: '#a78bfa' },
   { id: 'closed', label: 'Fechado', color: '#4ade80' },
 ]

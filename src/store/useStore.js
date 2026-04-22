@@ -56,8 +56,15 @@ function mapType(row) {
   return { id: row.id, label: row.label, icon: row.icon }
 }
 
+// Cores fixas por label de status (sobrescreve o banco)
+const STATUS_FIXED_COLORS = {
+  'Aberto': '#f59e0b',       // Amarelo
+  'Em Progresso': '#3b82f6', // Azul
+}
+
 function mapStatus(row) {
-  return { id: row.id, label: row.label, color: row.color, orderNum: row.order_num }
+  const fixedColor = STATUS_FIXED_COLORS[row.label]
+  return { id: row.id, label: row.label, color: fixedColor || row.color, orderNum: row.order_num }
 }
 
 function mapAgent(row) {
@@ -151,7 +158,20 @@ export function useStore() {
 
     if (error) { console.error('[fetchAgents]', error); return }
     setAgents(data.map(mapAgent))
-  }  // --- Tickets ---
+  }  // --- Audit Log ---
+  async function auditLog(actionType, ticket, details = {}) {
+    const { error } = await supabase.from('ast_audit_logs').insert({
+      action_type: actionType,
+      ticket_id: ticket?.id || null,
+      ticket_number: ticket?.ticketNumber || null,
+      ticket_title: ticket?.title || null,
+      performed_by: details.author || 'Sistema',
+      details,
+    })
+    if (error) console.error('[auditLog] ERRO:', error.message, error.details, error.hint)
+  }
+
+  // --- Tickets ---
   async function createTicket(data) {
     const { data: row, error } = await supabase
       .from('ast_tickets')
@@ -194,6 +214,12 @@ export function useStore() {
     }
 
     await fetchTickets()
+    auditLog('ticket_created', { id: row.id, ticketNumber: row.ticket_number, title: row.title }, {
+      author: data.assignee || 'Sistema',
+      clientName: data.clientName,
+      status: 'open',
+      priority: data.priority,
+    })
     return row
   }
 
@@ -232,12 +258,44 @@ export function useStore() {
         status: changes.status,
         author: changes._author || 'Sistema',
       })
+      auditLog('status_changed', ticket, {
+        author: changes._author || 'Sistema',
+        from: ticket.status,
+        to: changes.status,
+        toLabel: statusObj?.label || changes.status,
+      })
+    }
+
+    if (changes.assignee !== undefined && changes.assignee !== ticket.assignee) {
+      auditLog('assignee_changed', ticket, {
+        author: changes._author || 'Sistema',
+        from: ticket.assignee,
+        to: changes.assignee,
+      })
+    }
+
+    if (changes.priority !== undefined && changes.priority !== ticket.priority) {
+      auditLog('priority_changed', ticket, {
+        author: changes._author || 'Sistema',
+        from: ticket.priority,
+        to: changes.priority,
+      })
     }
 
     await fetchTickets()
   }
 
   async function deleteTicket(id) {
+    const ticket = tickets.find(t => t.id === id)
+
+    // Salva log ANTES de deletar (ticket ainda existe)
+    await auditLog('ticket_deleted', ticket, {
+      author: ticket?.assignee || 'Sistema',
+      clientName: ticket?.clientName,
+      status: ticket?.status,
+      priority: ticket?.priority,
+    })
+
     const { error } = await supabase
       .from('ast_tickets')
       .delete()
@@ -439,6 +497,16 @@ export function useStore() {
     })))
   }
 
+  async function fetchAuditLogs(limit = 100) {
+    const { data, error } = await supabase
+      .from('ast_audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) { console.error('[fetchAuditLogs]', error); return [] }
+    return data
+  }
+
   return {
     tickets, categories, types, statuses, agents, loading,
     createTicket, updateTicket, deleteTicket, addAction,
@@ -447,5 +515,6 @@ export function useStore() {
     addChecklistItem, toggleChecklistItem, removeChecklistItem,
     addComment, removeComment,
     addAttachment, removeAttachment,
+    fetchAuditLogs,
   }
 }

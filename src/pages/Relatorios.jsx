@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import Icon from '../components/Icon'
-import { exportProfessionalReport } from '../lib/exportPdf'
+import { exportProfessionalReport, exportToExcel } from '../lib/exportPdf'
 import './Relatorios.css'
 
 const PERIODS = [
@@ -177,7 +177,6 @@ export default function Relatorios({ store }) {
           <button
             className="btn-export"
             onClick={() => {
-              console.log('Botão clicado!')
               exportProfessionalReport(
                 stats,
                 store.tickets,
@@ -191,6 +190,19 @@ export default function Relatorios({ store }) {
           >
             <Icon name="fileEdit" size={14} />
             Exportar PDF
+          </button>
+          <button
+            className="btn-export btn-export-excel-rel"
+            onClick={() => exportToExcel(
+              store.tickets,
+              store.categories,
+              store.types,
+              store.statuses,
+              `relatorio-${period}-${new Date().toISOString().split('T')[0]}.xlsx`
+            )}
+          >
+            <Icon name="fileEdit" size={14} />
+            Exportar Excel
           </button>
         </div>
       </div>

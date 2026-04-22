@@ -634,3 +634,55 @@ export function exportTableToPdf(tickets, categories, types, statuses, filename 
     alert('Erro ao exportar PDF: ' + error.message)
   }
 }
+
+/**
+ * Exporta tickets para Excel (.xlsx)
+ */
+export function exportToExcel(tickets, categories, types, statuses, filename = 'tickets.xlsx') {
+  try {
+    import('xlsx').then(XLSX => {
+      const prioLabels = { low: 'Baixa', medium: 'Média', high: 'Alta', critical: 'Crítica' }
+
+      const rows = tickets.map(ticket => {
+        const cat = categories.find(c => c.id === ticket.categoryId)
+        const type = types.find(t => t.id === ticket.typeId)
+        const status = statuses.find(s => s.id === ticket.status)
+        const ticketNum = ticket.ticketNumber ? `#${String(ticket.ticketNumber).padStart(4, '0')}` : '—'
+        const deadline = ticket.deadlineIndeterminate
+          ? 'Indeterminado'
+          : ticket.deadline ? new Date(ticket.deadline).toLocaleDateString('pt-BR') : '—'
+
+        return {
+          'Nº': ticketNum,
+          'Título': ticket.title || '—',
+          'Status': status?.label || ticket.status || '—',
+          'Prioridade': prioLabels[ticket.priority] || '—',
+          'Cliente': ticket.clientName || '—',
+          'Tipo': type?.label || '—',
+          'Categoria': cat?.label || '—',
+          'Responsável': ticket.assignee || '—',
+          'Prazo': deadline,
+          'Criado em': new Date(ticket.createdAt).toLocaleString('pt-BR'),
+          'Atualizado em': new Date(ticket.updatedAt).toLocaleString('pt-BR'),
+        }
+      })
+
+      const ws = XLSX.utils.json_to_sheet(rows)
+
+      // Largura das colunas
+      ws['!cols'] = [
+        { wch: 8 }, { wch: 40 }, { wch: 15 }, { wch: 12 },
+        { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+        { wch: 18 }, { wch: 20 }, { wch: 20 },
+      ]
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Tickets')
+      XLSX.writeFile(wb, filename)
+      console.log('Excel exportado com sucesso!')
+    })
+  } catch (error) {
+    console.error('Erro ao exportar Excel:', error)
+    alert('Erro ao exportar Excel: ' + error.message)
+  }
+}

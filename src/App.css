@@ -198,8 +198,15 @@
   color: #e2e8f0;
 }
 
-.hamburger-btn:active {
-  transform: scale(0.95);
+.btn-export-excel {
+  border-color: #16a34a40;
+  color: #4ade80;
+}
+
+.btn-export-excel:hover {
+  border-color: #4ade80;
+  color: #86efac;
+  background: #16a34a15;
 }
 
 .search-input {
@@ -782,4 +789,8 @@
 .card-config-check.on {
   background: #6366f1;
   border-color: #6366f1;
+}
+
+.hamburger-btn:active {
+  transform: scale(0.95);
 }

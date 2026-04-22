@@ -90,8 +90,8 @@ function TimelineEntry({ entry, statuses = [] }) {
 }
 
 const LEGACY_STATUS = {
-  open:        { id: 'open',        label: 'Aberto',       color: '#60a5fa' },
-  in_progress: { id: 'in_progress', label: 'Em Progresso', color: '#fbbf24' },
+  open:        { id: 'open',        label: 'Aberto',       color: '#f59e0b' },
+  in_progress: { id: 'in_progress', label: 'Em Progresso', color: '#3b82f6' },
   waiting:     { id: 'waiting',     label: 'Aguardando',   color: '#a78bfa' },
   closed:      { id: 'closed',      label: 'Fechado',      color: '#4ade80' },
 }
@@ -172,7 +172,15 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
             ) : (
               <>
                 <span className="confirm-text">Confirmar exclusão?</span>
-                <button className="btn-delete" onClick={() => onDelete(ticket.id)}>Sim</button>
+                <button className="btn-delete" onClick={() => {
+                  // Log de exclusão na timeline antes de deletar
+                  onAction(ticket.id, {
+                    actionType: 'other',
+                    content: `Ticket excluído por ${window._currentAgent || 'Agente'}`,
+                    author: window._currentAgent || 'Agente',
+                  })
+                  onDelete(ticket.id)
+                }}>Sim</button>
                 <button className="btn-cancel-sm" onClick={() => setConfirmDelete(false)}>Não</button>
               </>
             )
@@ -218,7 +226,7 @@ export default function TicketDetail({ ticket, categories, types, statuses = [],
 
             {(ticket.clientName || ticket.chatwootLink) && (
               <div className="chatwoot-block">
-                <div className="chatwoot-label">Chatwoot</div>
+                <div className="chatwoot-label">Cliente</div>
                 <div className="chatwoot-info">
                   {ticket.clientName && (
                     <div className="chatwoot-row">

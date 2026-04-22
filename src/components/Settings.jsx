@@ -229,7 +229,7 @@ function AgentManager({ agents, onAdd, onBulkAdd, onRemove }) {
     <SectionCard title="Responsaveis">
       <div className="agent-import-bar">
         <button type="button" className="btn-import" onClick={doImport} disabled={importing}>
-          {importing ? <><div className="btn-spinner" /> Importando...</> : <><Icon name="transfer" size={13} /> Sincronizar com Chatwoot</>}
+          {importing ? <><div className="btn-spinner" /> Importando...</> : <><Icon name="transfer" size={13} /> Sincronizar Agentes da Conta</>}
         </button>
         {importMsg && <span className={`import-msg ${importMsg.type}`}>{importMsg.text}</span>}
       </div>

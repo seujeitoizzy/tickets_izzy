@@ -60,6 +60,15 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
         try { msg = JSON.parse(msg) } catch { return }
       }
 
+      // DEBUG COMPLETO — loga tudo que chega do parent
+      if (event.origin && event.origin !== window.location.origin) {
+        console.group(`%c[PostMessage Debug] origin: ${event.origin}`, 'color: #6366f1; font-weight: bold')
+        console.log('event:', msg?.event || msg?.type || '(sem event)')
+        console.log('keys:', Object.keys(msg || {}).join(', '))
+        console.log('payload completo:', msg)
+        console.groupEnd()
+      }
+
       addLog?.(`[MSG] origin="${event.origin}" event="${msg?.event}" keys=${Object.keys(msg || {}).join(',')}`)
 
       const isAppContext = msg?.event === 'appContext' || msg?.type === 'appContext'

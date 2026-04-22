@@ -10,7 +10,8 @@ import NovoTicket from './pages/NovoTicket'
 import FecharTicket from './pages/FecharTicket'
 import VerificarTicket from './pages/VerificarTicket'
 import Relatorios from './pages/Relatorios'
-import { exportTableToPdf, exportElementToPdf } from './lib/exportPdf'
+import Auditoria from './pages/Auditoria'
+import { exportTableToPdf, exportElementToPdf, exportToExcel } from './lib/exportPdf'
 import { useSetting } from './hooks/useSettings'
 import './App.css'
 import './pages/PageLoading.css'
@@ -46,7 +47,7 @@ function getTicketsByStatusHelper(tickets, statuses, statusId) {
   )
 }
 
-function Layout({ children, store, filter, setFilter, search, setSearch, onExport }) {
+function Layout({ children, store, filter, setFilter, search, setSearch, onExport, onExportExcel }) {
   const navigate = useNavigate()
   const location = useLocation()
   // Inicializar sidebar fechada em mobile, aberta em desktop
@@ -120,6 +121,13 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
               <Icon name="zap" size={13} />
               <span>Visão Geral</span>
             </button>
+            <button
+              className={`nav-item ${location.pathname === '/auditoria' ? 'active' : ''}`}
+              onClick={() => navigate('/auditoria')}
+            >
+              <Icon name="fileEdit" size={13} />
+              <span>Auditoria</span>
+            </button>
           </NavGroup>
 
           {/* Configurações */}
@@ -165,7 +173,13 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
               {isList && onExport && (
                 <button className="btn-export-top" onClick={onExport}>
                   <Icon name="fileEdit" size={13} />
-                  Exportar PDF
+                  PDF
+                </button>
+              )}
+              {isList && onExportExcel && (
+                <button className="btn-export-top btn-export-excel" onClick={onExportExcel}>
+                  <Icon name="fileEdit" size={13} />
+                  Excel
                 </button>
               )}
               <button className="btn-primary" onClick={() => navigate('/novo')}>
@@ -218,8 +232,8 @@ function SummaryCards({ tickets, statuses, visibleCards, onToggleCard }) {
         )}
 
         {statuses.map((s, i) => show(`status_${s.id}`) && (
-          <div key={s.id} className="summary-card" style={{ borderTopColor: s.color }}>
-            <div className="sc-icon-wrap" style={{ background: s.color + '22' }}>
+          <div key={s.id} className="summary-card" style={{ borderTopColor: s.color, background: `linear-gradient(135deg, ${s.color}18, #1e293b)` }}>
+            <div className="sc-icon-wrap" style={{ background: s.color + '30' }}>
               <Icon name={statusIcons[i % statusIcons.length]} size={18} style={{ color: s.color }} />
             </div>
             <div className="sc-info">
@@ -264,8 +278,12 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
   const [clientFilter, setClientFilter] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [showClientDrop, setShowClientDrop] = useState(false)
+  const [assigneeFilter, setAssigneeFilter] = useState('')
+  const [assigneeSearch, setAssigneeSearch] = useState('')
+  const [showAssigneeDrop, setShowAssigneeDrop] = useState(false)
   const [showCardConfig, setShowCardConfig] = useState(false)
   const clientRef = React.useRef()
+  const assigneeRef = React.useRef()
   const cardConfigRef = React.useRef()
 
   const allCardIds = React.useMemo(() => {
@@ -284,6 +302,7 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
   React.useEffect(() => {
     function handleClick(e) {
       if (clientRef.current && !clientRef.current.contains(e.target)) setShowClientDrop(false)
+      if (assigneeRef.current && !assigneeRef.current.contains(e.target)) setShowAssigneeDrop(false)
       if (cardConfigRef.current && !cardConfigRef.current.contains(e.target)) setShowCardConfig(false)
     }
     document.addEventListener('mousedown', handleClick)
@@ -296,8 +315,18 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
     return names
   }, [store.tickets])
 
+  // Lista única de responsáveis
+  const assignees = React.useMemo(() => {
+    const names = [...new Set(store.tickets.map(t => t.assignee).filter(Boolean))].sort()
+    return names
+  }, [store.tickets])
+
   const filteredClients = clients.filter(c =>
     c.toLowerCase().includes(clientSearch.toLowerCase())
+  )
+
+  const filteredAssignees = assignees.filter(a =>
+    a.toLowerCase().includes(assigneeSearch.toLowerCase())
   )
 
   if (store.loading) {
@@ -356,8 +385,9 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
     }
 
     const matchClient = !clientFilter || t.clientName === clientFilter
+    const matchAssignee = !assigneeFilter || t.assignee === assigneeFilter
 
-    return matchFilter && matchSearch && matchClient
+    return matchFilter && matchSearch && matchClient && matchAssignee
   })
 
   const counts = { all: store.tickets.length }
@@ -467,6 +497,53 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
             </div>
           )}
         </div>
+
+        {/* Filtro por responsável */}
+        <div className="qf-client-wrap" ref={assigneeRef}>
+          <button
+            className={`qf-btn qf-client-btn ${assigneeFilter ? 'active' : ''}`}
+            style={assigneeFilter ? { borderColor: '#6366f1', color: '#a5b4fc', background: '#6366f115' } : {}}
+            onClick={() => setShowAssigneeDrop(v => !v)}
+          >
+            <Icon name="user" size={13} />
+            {assigneeFilter || 'Responsável'}
+            {assigneeFilter && (
+              <span className="qf-clear" onClick={e => { e.stopPropagation(); setAssigneeFilter(''); setAssigneeSearch('') }}>
+                <Icon name="close" size={10} />
+              </span>
+            )}
+          </button>
+          {showAssigneeDrop && (
+            <div className="qf-client-dropdown">
+              <div className="qf-client-search">
+                <Icon name="search" size={13} style={{ color: '#475569', flexShrink: 0 }} />
+                <input
+                  autoFocus
+                  placeholder="Buscar responsável..."
+                  value={assigneeSearch}
+                  onChange={e => setAssigneeSearch(e.target.value)}
+                />
+              </div>
+              <div className="qf-client-list">
+                {filteredAssignees.length === 0 && (
+                  <p className="qf-client-empty">Nenhum responsável encontrado</p>
+                )}
+                {filteredAssignees.map(a => (
+                  <button
+                    key={a}
+                    className={`qf-client-item ${assigneeFilter === a ? 'selected' : ''}`}
+                    onClick={() => { setAssigneeFilter(a); setAssigneeSearch(''); setShowAssigneeDrop(false) }}
+                  >
+                    <Icon name="user" size={12} style={{ color: '#475569', flexShrink: 0 }} />
+                    {a}
+                    {assigneeFilter === a && <Icon name="check" size={12} style={{ color: '#6366f1', marginLeft: 'auto' }} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         </div>{/* end quick-filters */}
 
         {/* Botão configurar visualização */}
@@ -535,8 +612,13 @@ export default function App() {
     exportTableToPdf(tickets, store.categories, store.types, store.statuses, 'tickets.pdf')
   }
 
+  function handleExportExcel() {
+    const tickets = store.tickets
+    exportToExcel(tickets, store.categories, store.types, store.statuses, 'tickets.xlsx')
+  }
+
   return (
-    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onExport={handleExport}>
+    <Layout store={store} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onExport={handleExport} onExportExcel={handleExportExcel}>
       <Routes>
         <Route path="/" element={
           <ListaTickets
@@ -552,6 +634,7 @@ export default function App() {
         <Route path="/fechar" element={<FecharTicket store={store} />} />
         <Route path="/verificar" element={<VerificarTicket store={store} />} />
         <Route path="/relatorios" element={<Relatorios store={store} />} />
+        <Route path="/auditoria" element={<Auditoria store={store} />} />
         <Route path="/settings" element={
           <Settings
             categories={store.categories}

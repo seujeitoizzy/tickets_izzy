@@ -31,8 +31,8 @@ function DeadlineCell({ ticket }) {
 
 // Fallback para status com id fixo (legado)
 const LEGACY_STATUS = {
-  open:        { label: 'Aberto',       color: '#60a5fa' },
-  in_progress: { label: 'Em Progresso', color: '#fbbf24' },
+  open:        { label: 'Aberto',       color: '#f59e0b' },
+  in_progress: { label: 'Em Progresso', color: '#3b82f6' },
   waiting:     { label: 'Aguardando',   color: '#a78bfa' },
   closed:      { label: 'Fechado',      color: '#4ade80' },
 }

@@ -1,0 +1,139 @@
+.auditoria-wrap {
+  max-width: 1100px;
+}
+
+.auditoria-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.auditoria-header h2 {
+  font-size: 18px;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.audit-filters {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.audit-filter-btn {
+  background: none;
+  border: 1px solid #334155;
+  color: #64748b;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.audit-filter-btn:hover { color: #94a3b8; border-color: #475569; }
+.audit-filter-btn.active { background: #334155; color: #f1f5f9; border-color: #475569; }
+
+.audit-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #334155;
+  font-size: 14px;
+}
+
+.audit-table-wrap {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.audit-table thead tr {
+  background: #0f172a;
+}
+
+.audit-table th {
+  text-align: left;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 16px;
+  border-bottom: 1px solid #334155;
+}
+
+.audit-table td {
+  padding: 12px 16px;
+  color: #94a3b8;
+  border-bottom: 1px solid #1e293b;
+  vertical-align: middle;
+}
+
+.audit-table tbody tr:last-child td { border-bottom: none; }
+
+.audit-table tbody tr:hover td { background: #0f172a; }
+
+.audit-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.audit-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.audit-ticket-num {
+  font-size: 11px;
+  color: #475569;
+  font-family: monospace;
+}
+
+.audit-ticket-title {
+  color: #e2e8f0;
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+}
+
+.audit-details {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.audit-date {
+  color: #475569;
+  font-size: 12px;
+  white-space: nowrap;
+}
