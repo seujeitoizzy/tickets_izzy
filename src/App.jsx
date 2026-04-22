@@ -222,12 +222,19 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
   )
 }
 
-function SummaryCards({ tickets, statuses, visibleCards, onToggleCard }) {
+function SummaryCards({ tickets, statuses, visibleCards }) {
   const total = tickets.length
   const byStatus = {}
-  statuses.forEach(s => { byStatus[s.id] = tickets.filter(t => t.status === s.id).length })
-  const critical = tickets.filter(t => t.priority === 'critical' && t.status !== 'closed').length
-  const overdue = tickets.filter(t => t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) < new Date() && t.status !== 'closed').length
+  statuses.forEach(s => {
+    byStatus[s.id] = getTicketsByStatusHelper(tickets, statuses, s.id).length
+  })
+  const closedStatus = statuses.find(s => s.label === 'Fechado' || s.id === 'closed')
+  const isNotClosed = (t) => !closedStatus
+    ? (t.status !== 'closed' && t.status !== 'Fechado')
+    : (t.status !== closedStatus.id && t.status !== closedStatus.label)
+
+  const critical = tickets.filter(t => t.priority === 'critical' && isNotClosed(t)).length
+  const overdue = tickets.filter(t => t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) < new Date() && isNotClosed(t)).length
   const statusIcons = ['inbox', 'zap', 'message', 'checkCircle', 'arrowUp', 'star']
 
   const allCards = [
@@ -256,7 +263,7 @@ function SummaryCards({ tickets, statuses, visibleCards, onToggleCard }) {
         )}
 
         {statuses.map((s, i) => show(`status_${s.id}`) && (
-          <div key={s.id} className="summary-card" style={{ borderTopColor: s.color, background: `linear-gradient(135deg, ${s.color}18, #1e293b)` }}>
+          <div key={s.id} className="summary-card" style={{ borderTopColor: s.color, background: `linear-gradient(135deg, ${s.color}18, var(--bg-surface))` }}>
             <div className="sc-icon-wrap" style={{ background: s.color + '30' }}>
               <Icon name={statusIcons[i % statusIcons.length]} size={18} style={{ color: s.color }} />
             </div>

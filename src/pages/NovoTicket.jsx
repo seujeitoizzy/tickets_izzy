@@ -6,7 +6,7 @@ import './PageLoading.css'
 
 export default function NovoTicket({ store }) {
   const navigate = useNavigate()
-  const { data: chatwoot } = useChatwoot()
+  const { data: chatwoot, ready } = useChatwoot(null, { ignoreSession: false })
 
   function handleCreate(data) {
     store.createTicket(data)
@@ -24,6 +24,7 @@ export default function NovoTicket({ store }) {
 
   return (
     <TicketForm
+      key={chatwoot?.conversationId || chatwoot?.clientName || 'novo'}
       categories={store.categories}
       types={store.types}
       agents={store.agents}
