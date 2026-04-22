@@ -112,6 +112,10 @@ export function useChatwoot(addLog, { ignoreSession = false } = {}) {
 
     window.addEventListener('message', handleMessage)
     addLog?.('[READY] Listener ativo, enviando chatwoot:ready')
+
+    // Protocolo correto do Chatwoot Dashboard App
+    try { window.parent.postMessage('chatwoot-dashboard-app:fetch-info', '*') } catch {}
+    // Fallback para versões antigas
     try { window.parent.postMessage({ type: 'chatwoot:ready' }, '*') } catch {}
 
     // Fallback: se não receber postMessage em tempo hábil, usa sessionStorage

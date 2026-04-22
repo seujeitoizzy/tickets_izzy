@@ -13,6 +13,7 @@ import Relatorios from './pages/Relatorios'
 import Auditoria from './pages/Auditoria'
 import { exportTableToPdf, exportElementToPdf, exportToExcel } from './lib/exportPdf'
 import { useSetting } from './hooks/useSettings'
+import { useTheme } from './hooks/useTheme'
 import './App.css'
 import './pages/PageLoading.css'
 
@@ -50,8 +51,8 @@ function getTicketsByStatusHelper(tickets, statuses, statusId) {
 function Layout({ children, store, filter, setFilter, search, setSearch, onExport, onExportExcel }) {
   const navigate = useNavigate()
   const location = useLocation()
-  // Inicializar sidebar fechada em mobile, aberta em desktop
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768)
+  const { theme, resolved, setTheme } = useTheme()
   const isSettings = location.pathname === '/settings'
   const isList = location.pathname === '/'
 
@@ -143,6 +144,29 @@ function Layout({ children, store, filter, setFilter, search, setSearch, onExpor
         </nav>
 
         <div className="sidebar-bottom">
+          <div className="theme-switcher">
+            <button
+              className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+              onClick={() => setTheme('light')}
+              title="Tema claro"
+            >
+              <Icon name="sun" size={14} />
+            </button>
+            <button
+              className={`theme-btn ${theme === 'system' ? 'active' : ''}`}
+              onClick={() => setTheme('system')}
+              title="Seguir sistema"
+            >
+              <Icon name="settings" size={14} />
+            </button>
+            <button
+              className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+              onClick={() => setTheme('dark')}
+              title="Tema escuro"
+            >
+              <Icon name="moon" size={14} />
+            </button>
+          </div>
           <div className="sidebar-version">v1.0.0</div>
         </div>
       </aside>

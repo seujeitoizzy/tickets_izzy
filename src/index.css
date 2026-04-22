@@ -1,3 +1,33 @@
+/* ===== TEMAS ===== */
+:root,
+[data-theme="dark"] {
+  --bg-base:    #0f172a;
+  --bg-surface: #1e293b;
+  --bg-raised:  #334155;
+  --border:     #334155;
+  --border-sub: #1e293b;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+  --text-faint:     #334155;
+  --accent:     #6366f1;
+  --accent-hover: #818cf8;
+}
+
+[data-theme="light"] {
+  --bg-base:    #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-raised:  #e2e8f0;
+  --border:     #cbd5e1;
+  --border-sub: #e2e8f0;
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #64748b;
+  --text-faint:     #cbd5e1;
+  --accent:     #6366f1;
+  --accent-hover: #4f46e5;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,8 +36,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--bg-base);
+  color: var(--text-primary);
   min-height: 100vh;
 }
 
@@ -27,10 +57,10 @@ button:hover {
 input, textarea, select {
   font-family: inherit;
   font-size: 14px;
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #e2e8f0;
+  color: var(--text-primary);
   padding: 8px 12px;
   width: 100%;
   outline: none;
@@ -38,7 +68,7 @@ input, textarea, select {
 }
 
 input:focus, textarea:focus, select:focus {
-  border-color: #6366f1;
+  border-color: var(--accent);
 }
 
 textarea {

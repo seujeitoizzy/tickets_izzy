@@ -15,10 +15,11 @@ window.addEventListener('message', (event) => {
   )
 })
 
-// Avisa o parent que está pronto
+// Avisa o parent que está pronto — protocolo Chatwoot Dashboard App
 try {
+  window.parent.postMessage('chatwoot-dashboard-app:fetch-info', '*')
   window.parent.postMessage({ type: 'chatwoot:ready' }, '*')
-  console.log('%c[GLOBAL] chatwoot:ready enviado para parent', 'color: #4ade80')
+  console.log('%c[GLOBAL] fetch-info enviado para parent', 'color: #4ade80')
 } catch(e) {
   console.log('%c[GLOBAL] Não está em iframe', 'color: #64748b')
 }
