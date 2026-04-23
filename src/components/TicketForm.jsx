@@ -154,7 +154,7 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
         <h2>{initial.id ? 'Editar Ticket' : 'Novo Ticket'}</h2>
         <form onSubmit={submit}>
 
-          <div className="section-label">Dados do Cliente (Chatwoot)</div>
+          <div className="section-label">Dados do Cliente</div>
           <div className="row">
             <div className="field">
               <label>Nome do Cliente</label>
@@ -166,7 +166,7 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
             </div>
           </div>
           <div className="field">
-            <label>Link da Conversa no Chatwoot</label>
+            <label>Link da Conversa</label>
             <input name="chatwootLink" value={form.chatwootLink} onChange={handle} placeholder="https://app.chatwoot.com/..." />
           </div>
 
