@@ -54,7 +54,7 @@ button:hover {
   opacity: 0.85;
 }
 
-input, textarea, select {
+input, textarea, select:not(.qf-select) {
   font-family: inherit;
   font-size: 14px;
   background: var(--bg-surface);

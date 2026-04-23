@@ -312,9 +312,16 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
   const [assigneeFilter, setAssigneeFilter] = useState('')
   const [assigneeSearch, setAssigneeSearch] = useState('')
   const [showAssigneeDrop, setShowAssigneeDrop] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [deadlineFilter, setDeadlineFilter] = useState('') // 'overdue' | 'today' | 'week' | 'indeterminate'
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showDateDrop, setShowDateDrop] = useState(false)
   const [showCardConfig, setShowCardConfig] = useState(false)
   const clientRef = React.useRef()
   const assigneeRef = React.useRef()
+  const dateRef = React.useRef()
   const cardConfigRef = React.useRef()
 
   const allCardIds = React.useMemo(() => {
@@ -334,6 +341,7 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
     function handleClick(e) {
       if (clientRef.current && !clientRef.current.contains(e.target)) setShowClientDrop(false)
       if (assigneeRef.current && !assigneeRef.current.contains(e.target)) setShowAssigneeDrop(false)
+      if (dateRef.current && !dateRef.current.contains(e.target)) setShowDateDrop(false)
       if (cardConfigRef.current && !cardConfigRef.current.contains(e.target)) setShowCardConfig(false)
     }
     document.addEventListener('mousedown', handleClick)
@@ -417,8 +425,22 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
 
     const matchClient = !clientFilter || t.clientName === clientFilter
     const matchAssignee = !assigneeFilter || t.assignee === assigneeFilter
+    const matchCategory = !categoryFilter || t.categoryId === categoryFilter
+    const matchType = !typeFilter || t.typeId === typeFilter
 
-    return matchFilter && matchSearch && matchClient && matchAssignee
+    // Filtro de prazo
+    let matchDeadline = true
+    if (deadlineFilter === 'overdue') matchDeadline = t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) < new Date()
+    else if (deadlineFilter === 'today') { const d = new Date(t.deadline); const now = new Date(); matchDeadline = t.deadline && !t.deadlineIndeterminate && d.toDateString() === now.toDateString() }
+    else if (deadlineFilter === 'week') { const d = new Date(t.deadline); const week = new Date(); week.setDate(week.getDate() + 7); matchDeadline = t.deadline && !t.deadlineIndeterminate && new Date(t.deadline) <= week }
+    else if (deadlineFilter === 'indeterminate') matchDeadline = !!t.deadlineIndeterminate
+
+    // Filtro de data de criação
+    let matchDate = true
+    if (dateFrom) matchDate = new Date(t.createdAt) >= new Date(dateFrom)
+    if (dateTo) matchDate = matchDate && new Date(t.createdAt) <= new Date(dateTo + 'T23:59:59')
+
+    return matchFilter && matchSearch && matchClient && matchAssignee && matchCategory && matchType && matchDeadline && matchDate
   })
 
   const counts = { all: store.tickets.length }
@@ -570,6 +592,55 @@ function ListaTickets({ store, filter, search, setFilter, selectedId, setSelecte
                     {assigneeFilter === a && <Icon name="check" size={12} style={{ color: '#6366f1', marginLeft: 'auto' }} />}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Filtro por categoria */}
+        <select className={`qf-btn qf-select ${categoryFilter ? 'active' : ''}`} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={categoryFilter ? { borderColor: '#6366f1', color: '#a5b4fc', background: '#6366f115' } : {}}>
+          <option value="">Categoria</option>
+          {store.categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
+
+        {/* Filtro por tipo */}
+        <select className={`qf-btn qf-select ${typeFilter ? 'active' : ''}`} value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={typeFilter ? { borderColor: '#6366f1', color: '#a5b4fc', background: '#6366f115' } : {}}>
+          <option value="">Tipo</option>
+          {store.types.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+
+        {/* Filtro por prazo */}
+        <select className={`qf-btn qf-select ${deadlineFilter ? 'active' : ''}`} value={deadlineFilter} onChange={e => setDeadlineFilter(e.target.value)} style={deadlineFilter ? { borderColor: '#f97316', color: '#f97316', background: '#f9731615' } : {}}>
+          <option value="">Prazo</option>
+          <option value="overdue">Vencido</option>
+          <option value="today">Vence hoje</option>
+          <option value="week">Próximos 7 dias</option>
+          <option value="indeterminate">Indeterminado</option>
+        </select>
+
+        {/* Filtro por data de criação */}
+        <div className="qf-client-wrap" ref={dateRef}>
+          <button
+            className={`qf-btn ${(dateFrom || dateTo) ? 'active' : ''}`}
+            style={(dateFrom || dateTo) ? { borderColor: '#6366f1', color: '#a5b4fc', background: '#6366f115' } : {}}
+            onClick={() => setShowDateDrop(v => !v)}
+          >
+            <Icon name="clock" size={13} />
+            {(dateFrom || dateTo) ? `${dateFrom || '...'} → ${dateTo || '...'}` : 'Criado em'}
+            {(dateFrom || dateTo) && (
+              <span className="qf-clear" onClick={e => { e.stopPropagation(); setDateFrom(''); setDateTo('') }}>
+                <Icon name="close" size={10} />
+              </span>
+            )}
+          </button>
+          {showDateDrop && (
+            <div className="qf-client-dropdown" style={{ width: 220, padding: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>De</label>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '6px 10px', fontSize: 13, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', width: '100%' }} />
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Até</label>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: '6px 10px', fontSize: 13, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', width: '100%' }} />
+                <button onClick={() => { setDateFrom(''); setDateTo('') }} style={{ fontSize: 11, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>Limpar</button>
               </div>
             </div>
           )}

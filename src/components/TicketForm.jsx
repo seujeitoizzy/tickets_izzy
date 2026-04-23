@@ -167,7 +167,7 @@ export default function TicketForm({ onSubmit, onCancel, categories, types, agen
           </div>
           <div className="field">
             <label>Link da Conversa</label>
-            <input name="chatwootLink" value={form.chatwootLink} onChange={handle} placeholder="https://app.chatwoot.com/..." />
+            <input name="chatwootLink" value={form.chatwootLink} onChange={handle} placeholder="https://chat.izzy.app.br/..." />
           </div>
 
           <div className="section-label">Detalhes do Ticket</div>
